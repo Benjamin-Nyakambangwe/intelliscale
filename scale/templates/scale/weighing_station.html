@@ -1,0 +1,739 @@
+{% extends "scale/base.html" %}
+
+{% block title %}Weighing Station | IntelliScale{% endblock %}
+
+{% block content %}
+<div>
+    <div class="mb-6">
+        <h1 class="text-2xl font-semibold text-zinc-900">Weighing Station</h1>
+        <p class="mt-2 text-zinc-600">Record new weighing measurements and add them to delivery notes.</p>
+    </div>
+
+    {% if messages %}
+        <div class="mb-6">
+            {% for message in messages %}
+                <div class="bg-{% if message.tags == 'success' %}green{% elif message.tags == 'error' %}red{% else %}blue{% endif %}-50 border border-{% if message.tags == 'success' %}green{% elif message.tags == 'error' %}red{% else %}blue{% endif %}-200 text-{% if message.tags == 'success' %}green{% elif message.tags == 'error' %}red{% else %}blue{% endif %}-600 text-sm rounded-md p-4 mb-4">
+                    {{ message }}
+                </div>
+            {% endfor %}
+        </div>
+    {% endif %}
+
+<form id="weighing-form" method="post" action="{% url 'scale:weighing_station' %}">
+    {% csrf_token %}
+    <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
+        <!-- Left column -->
+        <div class="lg:col-span-2 space-y-6">
+            <!-- Scale Connection Card -->
+            <div class="bg-white shadow rounded-lg overflow-hidden border border-zinc-200">
+                <div class="px-6 py-5 border-b border-zinc-200">
+                    <h2 class="text-lg font-medium text-zinc-900">Scale Connection</h2>
+                </div>
+                <div class="p-6">
+                    <div class="flex justify-between items-center mb-4">
+                        <div>
+                            <label for="scale-select" class="block text-sm font-medium text-zinc-700 mb-1">Select Scale</label>
+                            <select id="scale-select" name="scale_id" class="block w-full rounded-md border-zinc-300 shadow-sm focus:border-blue-500 focus:ring-blue-500 sm:text-sm p-2">
+                                <option value="">Select a scale...</option>
+                                {% for scale in scales %}
+                                    <option value="{{ scale.id }}">{{ scale.name }} ({{ scale.model_number }})</option>
+                                {% endfor %}
+                            </select>
+                        </div>
+                        <div class="flex items-center space-x-2 mt-6">
+                            <span id="connection-status" class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-red-100 text-red-800">
+                                Disconnected
+                            </span>
+                            <button id="connect-scale-btn" type="button" class="inline-flex items-center justify-center whitespace-nowrap rounded-md text-sm font-medium bg-zinc-900 text-zinc-50 hover:bg-zinc-900/90 h-10 px-4 py-2">
+                                Connect
+                            </button>
+                        </div>
+                    </div>
+                    <div id="scale-info" class="hidden border border-zinc-200 rounded-md p-4 bg-zinc-50 mt-4">
+                        <div class="grid grid-cols-2 gap-4">
+                            <div>
+                                <span class="text-sm text-zinc-500">Manufacturer:</span>
+                                <span id="scale-manufacturer" class="ml-2 text-sm font-medium text-zinc-900">-</span>
+                            </div>
+                            <div>
+                                <span class="text-sm text-zinc-500">Model:</span>
+                                <span id="scale-model" class="ml-2 text-sm font-medium text-zinc-900">-</span>
+                            </div>
+                            <div>
+                                <span class="text-sm text-zinc-500">Max Capacity:</span>
+                                <span id="scale-capacity" class="ml-2 text-sm font-medium text-zinc-900">-</span>
+                            </div>
+                            <div>
+                                <span class="text-sm text-zinc-500">COM Port:</span>
+                                <span id="scale-port" class="ml-2 text-sm font-medium text-zinc-900">-</span>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Weighing Data Card -->
+            <div class="bg-white shadow rounded-lg overflow-hidden border border-zinc-200">
+                <div class="px-6 py-5 border-b border-zinc-200">
+                    <h2 class="text-lg font-medium text-zinc-900">Weighing Data</h2>
+                </div>
+                <div class="p-6">
+                    <div class="flex justify-between items-center mb-6">
+                        <button id="get-weight-btn" type="button" class="inline-flex items-center justify-center whitespace-nowrap rounded-md text-sm font-medium bg-blue-600 text-white hover:bg-blue-700 h-10 px-4 py-2">
+                            Get Weight
+                        </button>
+                        <select id="unit-select" name="unit_of_measure" class="rounded-md border-zinc-300 shadow-sm focus:border-blue-500 focus:ring-blue-500 sm:text-sm p-2">
+                            <option value="kg">kg</option>
+                            <option value="g">g</option>
+                            <option value="lb">lb</option>
+                            <option value="oz">oz</option>
+                        </select>
+                    </div>
+                    
+                    <div class="grid grid-cols-1 md:grid-cols-3 gap-6">
+                        <div>
+                            <label class="block text-sm font-medium text-zinc-700 mb-1">Gross Weight</label>
+                            <div class="flex">
+                                <input type="text" id="gross-weight" name="gross_weight" readonly class="block w-full rounded-l-md border-zinc-300 shadow-sm focus:border-blue-500 focus:ring-blue-500 sm:text-sm p-2 bg-zinc-50" placeholder="0.00">
+                                <span class="inline-flex items-center rounded-r-md border border-l-0 border-zinc-300 bg-zinc-50 px-3 text-zinc-500 sm:text-sm">
+                                    <span id="unit-display-gross">kg</span>
+                                </span>
+                            </div>
+                        </div>
+                        <div>
+                            <label class="block text-sm font-medium text-zinc-700 mb-1">Tare Weight</label>
+                            <div class="flex">
+                                <input type="number" id="tare-weight" name="tare_weight" class="block w-full rounded-l-md border-zinc-300 shadow-sm focus:border-blue-500 focus:ring-blue-500 sm:text-sm p-2" placeholder="0.00" step="0.01">
+                                <span class="inline-flex items-center rounded-r-md border border-l-0 border-zinc-300 bg-zinc-50 px-3 text-zinc-500 sm:text-sm">
+                                    <span id="unit-display-tare">kg</span>
+                                </span>
+                            </div>
+                        </div>
+                        <div>
+                            <label class="block text-sm font-medium text-zinc-700 mb-1">Net Weight</label>
+                            <div class="flex">
+                                <input type="text" id="net-weight" name="net_weight" readonly class="block w-full rounded-l-md border-zinc-300 shadow-sm focus:border-blue-500 focus:ring-blue-500 sm:text-sm p-2 bg-zinc-50" placeholder="0.00">
+                                <span class="inline-flex items-center rounded-r-md border border-l-0 border-zinc-300 bg-zinc-50 px-3 text-zinc-500 sm:text-sm">
+                                    <span id="unit-display-net">kg</span>
+                                </span>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Product Information Card -->
+            <div class="bg-white shadow rounded-lg overflow-hidden border border-zinc-200">
+                <div class="px-6 py-5 border-b border-zinc-200">
+                    <h2 class="text-lg font-medium text-zinc-900">Product Information</h2>
+                </div>
+                <div class="p-6">
+                    <div class="mb-4">
+                        <div class="flex items-center space-x-2 mb-4">
+                            <button id="scan-barcode-btn" type="button" class="inline-flex items-center justify-center whitespace-nowrap rounded-md text-sm font-medium bg-zinc-900 text-zinc-50 hover:bg-zinc-900/90 h-10 px-4 py-2">
+                                <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4 mr-2" viewBox="0 0 20 20" fill="currentColor">
+                                    <path d="M2 4h2V2H2v2zm4 0h2V2H6v2zm4 0h2V2h-2v2zm4 0h2V2h-2v2z" />
+                                    <path d="M18 6H2v12h16V6zM4 16H2v-2h2v2zm0-4H2v-2h2v2zm0-4H2V6h2v2zm4 8H6v-2h2v2zm0-4H6v-2h2v2zm0-4H6V6h2v2zm4 8h-2v-2h2v2zm0-4h-2v-2h2v2zm0-4h-2V6h2v2zm4 8h-2v-2h2v2zm0-4h-2v-2h2v2zm0-4h-2V6h2v2z" />
+                                </svg>
+                                Scan Barcode
+                            </button>
+                            <span class="text-sm text-zinc-500">or</span>
+                            <select id="product-select" name="product_id" class="block w-full rounded-md border-zinc-300 shadow-sm focus:border-blue-500 focus:ring-blue-500 sm:text-sm p-2">
+                                <option value="">Select a product...</option>
+                                {% for product in products %}
+                                    <option value="{{ product.id }}">{{ product.name }}</option>
+                                {% endfor %}
+                            </select>
+                        </div>
+                    </div>
+
+                    <div id="product-details" class="hidden border border-zinc-200 rounded-md p-4 bg-zinc-50">
+                        <div class="grid grid-cols-2 gap-4">
+                            <div>
+                                <span class="text-sm text-zinc-500">Product Name:</span>
+                                <span id="product-name" class="ml-2 text-sm font-medium text-zinc-900">-</span>
+                            </div>
+                            <div>
+                                <span class="text-sm text-zinc-500">ERP ID:</span>
+                                <span id="product-erp-id" class="ml-2 text-sm font-medium text-zinc-900">-</span>
+                            </div>
+                            <div class="col-span-2">
+                                <span class="text-sm text-zinc-500">Description:</span>
+                                <span id="product-description" class="ml-2 text-sm font-medium text-zinc-900">-</span>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Right column -->
+        <div class="space-y-6">
+            <!-- Weighing Process Card -->
+            <div class="bg-white shadow rounded-lg overflow-hidden border border-zinc-200">
+                <div class="px-6 py-5 border-b border-zinc-200">
+                    <h2 class="text-lg font-medium text-zinc-900">Weighing Process</h2>
+                </div>
+                <div class="p-6">
+                    <div class="mb-4">
+                        <label for="process-select" class="block text-sm font-medium text-zinc-700 mb-1">Process Type</label>
+                        <select id="process-select" name="process_id" class="block w-full rounded-md border-zinc-300 shadow-sm focus:border-blue-500 focus:ring-blue-500 sm:text-sm p-2">
+                            <option value="">Select a process...</option>
+                            {% for process in processes %}
+                                <option value="{{ process.id }}">{{ process.name }}</option>
+                            {% endfor %}
+                        </select>
+                    </div>
+
+                    <div id="custom-fields-container" class="space-y-4 hidden">
+                        <!-- Custom fields will be dynamically added here based on the selected process -->
+                    </div>
+                </div>
+            </div>
+
+            <!-- Delivery Note Card -->
+            <div class="bg-white shadow rounded-lg overflow-hidden border border-zinc-200">
+                <div class="px-6 py-5 border-b border-zinc-200">
+                    <h2 class="text-lg font-medium text-zinc-900">Delivery Note</h2>
+                </div>
+                <div class="p-6">
+                    <div class="mb-4">
+                        <div class="flex items-center space-x-2">
+                            <input type="checkbox" id="add-to-delivery-note" name="add_to_delivery_note" class="h-4 w-4 text-blue-600 border-zinc-300 rounded focus:ring-blue-500">
+                            <label for="add-to-delivery-note" class="text-sm font-medium text-zinc-700">Add to delivery note</label>
+                        </div>
+                    </div>
+
+                    <div id="delivery-note-selection" class="hidden space-y-4">
+                        <div class="flex items-center space-x-2">
+                            <input type="radio" id="existing-note" name="note_option" value="existing" class="h-4 w-4 text-blue-600 border-zinc-300 rounded-full focus:ring-blue-500">
+                            <label for="existing-note" class="text-sm font-medium text-zinc-700">Existing note</label>
+                        </div>
+                        
+                        <div id="existing-note-container" class="pl-6 hidden">
+                            <select id="delivery-note-select" name="delivery_note_id" class="block w-full rounded-md border-zinc-300 shadow-sm focus:border-blue-500 focus:ring-blue-500 sm:text-sm p-2">
+                                <option value="">Select a delivery note...</option>
+                                {% for note in delivery_notes %}
+                                    <option value="{{ note.id }}">{{ note.delivery_note_number }}</option>
+                                {% endfor %}
+                            </select>
+                        </div>
+
+                        <div class="flex items-center space-x-2">
+                            <input type="radio" id="new-note" name="note_option" value="new" class="h-4 w-4 text-blue-600 border-zinc-300 rounded-full focus:ring-blue-500">
+                            <label for="new-note" class="text-sm font-medium text-zinc-700">Create new note</label>
+                        </div>
+                        
+                        <div id="new-note-container" class="pl-6 hidden">
+                            <div class="mb-2">
+                                <label for="new-note-number" class="block text-sm font-medium text-zinc-700 mb-1">Delivery Note Number</label>
+                                <input type="text" id="new-note-number" name="new_note_number" class="block w-full rounded-md border-zinc-300 shadow-sm focus:border-blue-500 focus:ring-blue-500 sm:text-sm p-2" placeholder="Enter note number">
+                            </div>
+                            <div>
+                                <label for="new-note-status" class="block text-sm font-medium text-zinc-700 mb-1">Status</label>
+                                <select id="new-note-status" name="new_note_status" class="block w-full rounded-md border-zinc-300 shadow-sm focus:border-blue-500 focus:ring-blue-500 sm:text-sm p-2">
+                                    <option value="draft">Draft</option>
+                                    <option value="confirmed">Confirmed</option>
+                                    <option value="cancelled">Cancelled</option>
+                                </select>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Notes Card -->
+            <div class="bg-white shadow rounded-lg overflow-hidden border border-zinc-200">
+                <div class="px-6 py-5 border-b border-zinc-200">
+                    <h2 class="text-lg font-medium text-zinc-900">Notes</h2>
+                </div>
+                <div class="p-6">
+                    <textarea id="notes" name="notes" class="block w-full rounded-md border-zinc-300 shadow-sm focus:border-blue-500 focus:ring-blue-500 sm:text-sm p-2 h-24" placeholder="Enter any additional notes..."></textarea>
+                </div>
+            </div>
+
+            <!-- Actions Card -->
+            <div class="bg-white shadow rounded-lg overflow-hidden border border-zinc-200">
+                <div class="p-6">
+                    <div class="flex flex-col space-y-3">
+                        <button id="save-btn" type="submit" class="inline-flex items-center justify-center whitespace-nowrap rounded-md text-sm font-medium bg-zinc-900 text-zinc-50 hover:bg-zinc-900/90 h-10 px-4 py-2">
+                            Save
+                        </button>
+                        <button id="save-print-btn" type="button" class="inline-flex items-center justify-center whitespace-nowrap rounded-md text-sm font-medium bg-blue-600 text-white hover:bg-blue-700 h-10 px-4 py-2">
+                            <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4 mr-2" viewBox="0 0 20 20" fill="currentColor">
+                                <path fill-rule="evenodd" d="M5 4v3H4a2 2 0 00-2 2v3a2 2 0 002 2h1v2a2 2 0 002 2h6a2 2 0 002-2v-2h1a2 2 0 002-2V9a2 2 0 00-2-2h-1V4a2 2 0 00-2-2H7a2 2 0 00-2 2zm8 0H7v3h6V4zm0 8H7v4h6v-4z" clip-rule="evenodd" />
+                            </svg>
+                            Save & Print
+                        </button>
+                        <button id="clear-btn" type="button" class="inline-flex items-center justify-center whitespace-nowrap rounded-md text-sm font-medium border border-zinc-300 bg-white text-zinc-700 hover:bg-zinc-50 h-10 px-4 py-2">
+                            Clear Form
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</form>
+</div>
+{% endblock %}
+
+{% block extra_scripts %}
+<script>
+    document.addEventListener('DOMContentLoaded', function() {
+        // Toggle delivery note section
+        const addToDeliveryNoteCheckbox = document.getElementById('add-to-delivery-note');
+        const deliveryNoteSelection = document.getElementById('delivery-note-selection');
+        
+        addToDeliveryNoteCheckbox.addEventListener('change', function() {
+            deliveryNoteSelection.classList.toggle('hidden', !this.checked);
+        });
+        
+        // Toggle between existing and new delivery note options
+        const existingNoteRadio = document.getElementById('existing-note');
+        const newNoteRadio = document.getElementById('new-note');
+        const existingNoteContainer = document.getElementById('existing-note-container');
+        const newNoteContainer = document.getElementById('new-note-container');
+        
+        existingNoteRadio.addEventListener('change', function() {
+            if (this.checked) {
+                existingNoteContainer.classList.remove('hidden');
+                newNoteContainer.classList.add('hidden');
+            }
+        });
+        
+        newNoteRadio.addEventListener('change', function() {
+            if (this.checked) {
+                newNoteContainer.classList.remove('hidden');
+                existingNoteContainer.classList.add('hidden');
+            }
+        });
+        
+        // Calculate net weight when tare weight changes
+        const grossWeightInput = document.getElementById('gross-weight');
+        const tareWeightInput = document.getElementById('tare-weight');
+        const netWeightInput = document.getElementById('net-weight');
+        
+        tareWeightInput.addEventListener('input', calculateNetWeight);
+        
+        function calculateNetWeight() {
+            const grossWeight = parseFloat(grossWeightInput.value) || 0;
+            const tareWeight = parseFloat(tareWeightInput.value) || 0;
+            const netWeight = Math.max(0, grossWeight - tareWeight);
+            netWeightInput.value = netWeight.toFixed(2);
+        }
+        
+        // Update unit displays when unit is changed
+        const unitSelect = document.getElementById('unit-select');
+        const unitDisplayGross = document.getElementById('unit-display-gross');
+        const unitDisplayTare = document.getElementById('unit-display-tare');
+        const unitDisplayNet = document.getElementById('unit-display-net');
+        
+        unitSelect.addEventListener('change', function() {
+            const unit = this.value;
+            unitDisplayGross.textContent = unit;
+            unitDisplayTare.textContent = unit;
+            unitDisplayNet.textContent = unit;
+        });
+        
+        // Toggle scale info visibility when a scale is selected
+        const scaleSelect = document.getElementById('scale-select');
+        const scaleInfo = document.getElementById('scale-info');
+        
+        scaleSelect.addEventListener('change', function() {
+            scaleInfo.classList.toggle('hidden', !this.value);
+            // In a real implementation, you would fetch scale details here
+        });
+        
+        // Toggle product details visibility when a product is selected
+        const productSelect = document.getElementById('product-select');
+        const productDetails = document.getElementById('product-details');
+        
+        productSelect.addEventListener('change', function() {
+            productDetails.classList.toggle('hidden', !this.value);
+            // In a real implementation, you would fetch product details here
+        });
+        
+        // Toggle custom fields visibility when a process is selected
+        const processSelect = document.getElementById('process-select');
+        const customFieldsContainer = document.getElementById('custom-fields-container');
+        
+        // Parse process custom fields data from the template
+        const processCustomFields = JSON.parse('{{ process_custom_fields|escapejs }}');
+
+        processSelect.addEventListener('change', function() {
+            const processId = this.value;
+            customFieldsContainer.classList.toggle('hidden', !processId);
+            
+            if (processId) {
+                // Get custom fields for the selected process from our pre-loaded data
+                const customFields = processCustomFields[processId] || [];
+                renderCustomFields(customFields);
+            } else {
+                // Clear custom fields
+                customFieldsContainer.innerHTML = '';
+            }
+        });
+        
+        // Function to render custom fields
+        function renderCustomFields(fieldsSchema) {
+            // Clear the container first
+            customFieldsContainer.innerHTML = '';
+            
+            if (!fieldsSchema || fieldsSchema.length === 0) {
+                customFieldsContainer.innerHTML = '<p class="text-zinc-500">No custom fields defined for this process.</p>';
+                return;
+            }
+            
+            // Create a field for each schema item
+            fieldsSchema.forEach(field => {
+                const fieldId = `custom-field-${field.name.replace(/\s+/g, '-').toLowerCase()}`;
+                const fieldName = `custom_field_${field.name}`;
+                const required = field.required || false;
+                
+                // Create the field container
+                const fieldContainer = document.createElement('div');
+                
+                // Create the label
+                const label = document.createElement('label');
+                label.setAttribute('for', fieldId);
+                label.className = 'block text-sm font-medium text-zinc-700 mb-1';
+                label.textContent = field.name;
+                
+                if (required) {
+                    const requiredSpan = document.createElement('span');
+                    requiredSpan.className = 'text-red-500 ml-1';
+                    requiredSpan.textContent = '*';
+                    label.appendChild(requiredSpan);
+                }
+                
+                fieldContainer.appendChild(label);
+                
+                // Create the input based on field type
+                let input;
+                
+                switch (field.type) {
+                    case 'text':
+                    case 'email':
+                    case 'tel':
+                    case 'url':
+                    case 'password':
+                    case 'date':
+                    case 'time':
+                    case 'datetime-local':
+                    case 'month':
+                    case 'week':
+                    case 'color':
+                        input = document.createElement('input');
+                        input.type = field.type;
+                        input.className = 'block w-full rounded-md border-zinc-300 shadow-sm focus:border-blue-500 focus:ring-blue-500 sm:text-sm p-2';
+                        input.id = fieldId;
+                        input.name = fieldName;
+                        input.setAttribute('data-field-name', field.name);
+                        
+                        if (field.placeholder) {
+                            input.placeholder = field.placeholder;
+                        }
+                        
+                        if (required) {
+                            input.required = true;
+                        }
+                        break;
+                        
+                    case 'number':
+                        input = document.createElement('input');
+                        input.type = 'number';
+                        input.className = 'block w-full rounded-md border-zinc-300 shadow-sm focus:border-blue-500 focus:ring-blue-500 sm:text-sm p-2';
+                        input.id = fieldId;
+                        input.name = fieldName;
+                        input.setAttribute('data-field-name', field.name);
+                        
+                        if (field.min !== undefined) {
+                            input.min = field.min;
+                        }
+                        
+                        if (field.max !== undefined) {
+                            input.max = field.max;
+                        }
+                        
+                        if (field.step !== undefined) {
+                            input.step = field.step;
+                        }
+                        
+                        if (field.placeholder) {
+                            input.placeholder = field.placeholder;
+                        }
+                        
+                        if (required) {
+                            input.required = true;
+                        }
+                        break;
+                        
+                    case 'textarea':
+                        input = document.createElement('textarea');
+                        input.className = 'block w-full rounded-md border-zinc-300 shadow-sm focus:border-blue-500 focus:ring-blue-500 sm:text-sm p-2';
+                        input.id = fieldId;
+                        input.name = fieldName;
+                        input.setAttribute('data-field-name', field.name);
+                        input.rows = field.rows || 3;
+                        
+                        if (field.placeholder) {
+                            input.placeholder = field.placeholder;
+                        }
+                        
+                        if (required) {
+                            input.required = true;
+                        }
+                        break;
+                        
+                    case 'select':
+                        input = document.createElement('select');
+                        input.className = 'block w-full rounded-md border-zinc-300 shadow-sm focus:border-blue-500 focus:ring-blue-500 sm:text-sm p-2';
+                        input.id = fieldId;
+                        input.name = fieldName;
+                        input.setAttribute('data-field-name', field.name);
+                        
+                        if (required) {
+                            input.required = true;
+                        }
+                        
+                        // Add placeholder option
+                        const placeholderOption = document.createElement('option');
+                        placeholderOption.value = '';
+                        placeholderOption.textContent = 'Select an option...';
+                        placeholderOption.disabled = required;
+                        placeholderOption.selected = true;
+                        input.appendChild(placeholderOption);
+                        
+                        // Add options from field.options (if provided)
+                        if (field.options && Array.isArray(field.options)) {
+                            field.options.forEach(option => {
+                                const optionElement = document.createElement('option');
+                                optionElement.value = option.value || option;
+                                optionElement.textContent = option.label || option;
+                                input.appendChild(optionElement);
+                            });
+                        }
+                        break;
+                        
+                    case 'checkbox':
+                        // Create a wrapper for checkbox to style it better
+                        const checkboxWrapper = document.createElement('div');
+                        checkboxWrapper.className = 'flex items-center space-x-2';
+                        
+                        input = document.createElement('input');
+                        input.type = 'checkbox';
+                        input.className = 'h-4 w-4 text-blue-600 border-zinc-300 rounded focus:ring-blue-500';
+                        input.id = fieldId;
+                        input.name = fieldName;
+                        input.setAttribute('data-field-name', field.name);
+                        
+                        // Create a separate label for checkbox
+                        const checkboxLabel = document.createElement('label');
+                        checkboxLabel.setAttribute('for', fieldId);
+                        checkboxLabel.className = 'text-sm font-medium text-zinc-700';
+                        checkboxLabel.textContent = field.checkboxLabel || 'Yes';
+                        
+                        checkboxWrapper.appendChild(input);
+                        checkboxWrapper.appendChild(checkboxLabel);
+                        
+                        // Replace input with the wrapper
+                        input = checkboxWrapper;
+                        break;
+                        
+                    case 'radio':
+                        // Create a wrapper for radio buttons
+                        const radioWrapper = document.createElement('div');
+                        radioWrapper.className = 'space-y-2';
+                        
+                        // Add options from field.options (if provided)
+                        if (field.options && Array.isArray(field.options)) {
+                            field.options.forEach((option, index) => {
+                                const radioContainer = document.createElement('div');
+                                radioContainer.className = 'flex items-center space-x-2';
+                                
+                                const radioInput = document.createElement('input');
+                                radioInput.type = 'radio';
+                                radioInput.className = 'h-4 w-4 text-blue-600 border-zinc-300 rounded-full focus:ring-blue-500';
+                                radioInput.id = `${fieldId}-${index}`;
+                                radioInput.name = fieldName;
+                                radioInput.value = option.value || option;
+                                radioInput.setAttribute('data-field-name', field.name);
+                                
+                                if (required && index === 0) {
+                                    radioInput.required = true;
+                                }
+                                
+                                const radioLabel = document.createElement('label');
+                                radioLabel.setAttribute('for', `${fieldId}-${index}`);
+                                radioLabel.className = 'text-sm font-medium text-zinc-700';
+                                radioLabel.textContent = option.label || option;
+                                
+                                radioContainer.appendChild(radioInput);
+                                radioContainer.appendChild(radioLabel);
+                                radioWrapper.appendChild(radioContainer);
+                            });
+                        }
+                        
+                        // Replace input with the wrapper
+                        input = radioWrapper;
+                        break;
+                        
+                    default:
+                        // Default to text input
+                        input = document.createElement('input');
+                        input.type = 'text';
+                        input.className = 'block w-full rounded-md border-zinc-300 shadow-sm focus:border-blue-500 focus:ring-blue-500 sm:text-sm p-2';
+                        input.id = fieldId;
+                        input.name = fieldName;
+                        input.setAttribute('data-field-name', field.name);
+                        
+                        if (required) {
+                            input.required = true;
+                        }
+                        break;
+                }
+                
+                // Append the input to the container
+                fieldContainer.appendChild(input);
+                
+                // Add help text if provided
+                if (field.helpText) {
+                    const helpText = document.createElement('p');
+                    helpText.className = 'mt-1 text-sm text-zinc-500';
+                    helpText.textContent = field.helpText;
+                    fieldContainer.appendChild(helpText);
+                }
+                
+                // Add the field container to the custom fields container
+                customFieldsContainer.appendChild(fieldContainer);
+            });
+        }
+        
+        // Mock "Get Weight" functionality
+        const getWeightBtn = document.getElementById('get-weight-btn');
+        
+        getWeightBtn.addEventListener('click', function() {
+            // This is just a mock - in a real implementation, you would fetch weight from the connected scale
+            grossWeightInput.value = (Math.random() * 20).toFixed(2);
+            calculateNetWeight();
+        });
+        
+        // Clear form button functionality
+        const clearBtn = document.getElementById('clear-btn');
+        
+        clearBtn.addEventListener('click', function() {
+            // Reset all form fields
+            grossWeightInput.value = '';
+            tareWeightInput.value = '';
+            netWeightInput.value = '';
+            document.getElementById('notes').value = '';
+            scaleSelect.selectedIndex = 0;
+            scaleInfo.classList.add('hidden');
+            productSelect.selectedIndex = 0;
+            productDetails.classList.add('hidden');
+            processSelect.selectedIndex = 0;
+            customFieldsContainer.classList.add('hidden');
+            addToDeliveryNoteCheckbox.checked = false;
+            deliveryNoteSelection.classList.add('hidden');
+        });
+        
+        // Save & Print button functionality
+        const savePrintBtn = document.getElementById('save-print-btn');
+        
+        savePrintBtn.addEventListener('click', function() {
+            // Add a hidden input to indicate that we want to print after saving
+            const printInput = document.createElement('input');
+            printInput.type = 'hidden';
+            printInput.name = 'print_after_save';
+            printInput.value = 'true';
+            document.getElementById('weighing-form').appendChild(printInput);
+            
+            // Submit the form
+            document.getElementById('weighing-form').submit();
+        });
+        
+        // Form validation before submission
+        document.getElementById('weighing-form').addEventListener('submit', function(event) {
+            const scaleId = scaleSelect.value;
+            const productId = productSelect.value;
+            const processId = processSelect.value;
+            const grossWeight = grossWeightInput.value;
+            const tareWeight = tareWeightInput.value;
+            const netWeight = netWeightInput.value;
+            
+            if (!scaleId) {
+                alert('Please select a scale');
+                event.preventDefault();
+                return;
+            }
+            
+            if (!productId) {
+                alert('Please select a product');
+                event.preventDefault();
+                return;
+            }
+            
+            if (!processId) {
+                alert('Please select a weighing process');
+                event.preventDefault();
+                return;
+            }
+            
+            // Validate weight fields
+            if (!grossWeight || isNaN(parseFloat(grossWeight)) || parseFloat(grossWeight) <= 0) {
+                alert('Please get a valid gross weight measurement');
+                grossWeightInput.focus();
+                event.preventDefault();
+                return;
+            }
+            
+            if (tareWeight && (isNaN(parseFloat(tareWeight)) || parseFloat(tareWeight) < 0)) {
+                alert('Tare weight must be a valid number');
+                tareWeightInput.focus();
+                event.preventDefault();
+                return;
+            }
+            
+            if (!netWeight || isNaN(parseFloat(netWeight)) || parseFloat(netWeight) <= 0) {
+                alert('Net weight must be a valid positive number');
+                event.preventDefault();
+                return;
+            }
+            
+            // Validate required custom fields
+            const requiredCustomFields = document.querySelectorAll('#custom-fields-container input[required], #custom-fields-container select[required], #custom-fields-container textarea[required]');
+            for (const field of requiredCustomFields) {
+                if (!field.value) {
+                    const fieldName = field.getAttribute('data-field-name') || field.name;
+                    alert(`Please fill in the required field: ${fieldName}`);
+                    field.focus();
+                    event.preventDefault();
+                    return;
+                }
+            }
+            
+            // If delivery note option is selected, validate those options
+            if (addToDeliveryNoteCheckbox.checked) {
+                if (existingNoteRadio.checked && !document.getElementById('delivery-note-select').value) {
+                    alert('Please select a delivery note');
+                    event.preventDefault();
+                    return;
+                }
+                
+                if (newNoteRadio.checked && !document.getElementById('new-note-number').value) {
+                    alert('Please enter a delivery note number');
+                    event.preventDefault();
+                    return;
+                }
+            }
+        });
+
+        // Save button click handler to ensure netWeight is calculated before submission
+        document.getElementById('save-btn').addEventListener('click', function(event) {
+            // Recalculate net weight to ensure it's up to date
+            calculateNetWeight();
+        });
+    });
+</script>
+{% endblock %}
+    

@@ -1,0 +1,50 @@
+from django.contrib import admin
+from .models import Scale, WeighingProcess, Product, DeliveryNote, WeighingRecord
+
+
+class ScaleAdmin(admin.ModelAdmin):
+    list_display = ('name', 'manufacturer', 'model_number', 'is_active', 'last_connection_status', 'last_seen')
+    list_filter = ('is_active', 'last_connection_status')
+    search_fields = ('name', 'manufacturer', 'model_number')
+    list_editable = ('is_active', 'last_connection_status')
+    list_per_page = 20
+
+admin.site.register(Scale, ScaleAdmin)
+
+
+class WeighingProcessAdmin(admin.ModelAdmin):
+    list_display = ('name', 'is_active')
+    list_filter = ('is_active',)
+    search_fields = ('name',)
+    list_editable = ('is_active',)
+    list_per_page = 20
+
+admin.site.register(WeighingProcess, WeighingProcessAdmin)
+
+
+class ProductAdmin(admin.ModelAdmin):
+    list_display = ('name', 'erp_product_id', 'is_active', 'created_at', 'updated_at')
+    list_filter = ('is_active',)
+    search_fields = ('name', 'erp_product_id', 'description')
+    list_editable = ('is_active',)
+    list_per_page = 20
+
+admin.site.register(Product, ProductAdmin)
+
+
+class DeliveryNoteAdmin(admin.ModelAdmin):
+    list_display = ('delivery_note_number', 'created_by', 'status', 'is_synced', 'created_at', 'updated_at')
+    list_filter = ('is_synced', 'status')
+    search_fields = ('delivery_note_number', 'created_by__username')
+    list_per_page = 20
+
+admin.site.register(DeliveryNote, DeliveryNoteAdmin)
+
+
+class WeighingRecordAdmin(admin.ModelAdmin):
+    list_display = ('process', 'product', 'gross_weight', 'tare_weight', 'net_weight', 'created_at', 'updated_at')
+    list_filter = ('process', 'product')
+    search_fields = ('process__name', 'product__name')
+    list_per_page = 20
+
+admin.site.register(WeighingRecord, WeighingRecordAdmin)

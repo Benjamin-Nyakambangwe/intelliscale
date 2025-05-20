@@ -1,0 +1,14 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Manager Dashboard</title>
+</head>
+<body>
+    <h1>Welcome, Manager {{ user.username }}! (Role: {{ user.get_role_display }})</h1>
+    <p>This is the Manager dashboard.</p>
+    <form method="post" action="{% url 'users:logout' %}">
+        {% csrf_token %}
+        <button type="submit">Logout</button>
+    </form>
+</body>
+</html>

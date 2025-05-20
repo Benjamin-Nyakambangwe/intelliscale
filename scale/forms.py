@@ -1,0 +1,169 @@
+from django import forms
+from .models import Scale, WeighingProcess, Product, DeliveryNote
+import serial.tools.list_ports
+
+class ScaleForm(forms.ModelForm):
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        
+        # Dynamically populate COM port choices
+        com_port_choices = [('', 'Auto-detect / Not set')]
+        try:
+            ports = serial.tools.list_ports.comports()
+            detected_ports_choices = [(port.device, f"{port.device} ({port.description.split(' (COM')[0]})") for port in ports]
+        except Exception as e:
+            print(f"Error listing COM ports: {e}")
+            detected_ports_choices = []
+
+        current_com_port_value = None
+        if self.instance and self.instance.pk and self.instance.com_port:
+            current_com_port_value = self.instance.com_port
+            # Add current value to choices if not in detected list
+            if not any(current_com_port_value == p[0] for p in detected_ports_choices):
+                # Check if it's not already the default empty choice
+                if current_com_port_value != '':
+                    com_port_choices.append((current_com_port_value, f"{current_com_port_value} (Currently saved, not detected)"))
+        
+        com_port_choices.extend(detected_ports_choices)
+        
+        # Preserve existing attrs (like class) and set choices
+        com_port_attrs = self.fields['com_port'].widget.attrs
+        self.fields['com_port'].widget = forms.Select(attrs=com_port_attrs, choices=com_port_choices)
+        
+        if current_com_port_value:
+            self.initial['com_port'] = current_com_port_value
+        elif not self.instance.pk: # For new forms, default to 'Auto-detect'
+            self.initial['com_port'] = ''
+
+
+    class Meta:
+        model = Scale
+        fields = [
+            'name', 
+            'com_port',
+            'manufacturer',
+            'model_number', 
+            'max_capacity', 
+            'is_active',
+            'last_connection_status',
+            'last_seen'
+        ]
+        widgets = {
+            'name': forms.TextInput(attrs={
+                'class': 'block w-full rounded-md border-zinc-800 shadow-sm focus:border-blue-500 focus:ring-blue-500 sm:text-sm p-2'
+            }),
+            'com_port': forms.TextInput(attrs={
+                'class': 'block w-full rounded-md border-zinc-300 shadow-sm focus:border-blue-500 focus:ring-blue-500 sm:text-sm p-2'
+            }),
+            'manufacturer': forms.TextInput(attrs={
+                'class': 'block w-full rounded-md border-zinc-300 shadow-sm focus:border-blue-500 focus:ring-blue-500 sm:text-sm p-2'
+            }),
+            'model_number': forms.TextInput(attrs={
+                'class': 'block w-full rounded-md border-zinc-300 shadow-sm focus:border-blue-500 focus:ring-blue-500 sm:text-sm p-2'
+            }),
+            'max_capacity': forms.NumberInput(attrs={
+                'class': 'block w-full rounded-md border-zinc-300 shadow-sm focus:border-blue-500 focus:ring-blue-500 sm:text-sm p-2'
+            }),
+            'is_active': forms.CheckboxInput(attrs={
+                'class': 'h-4 w-4 text-blue-600 border-zinc-300 rounded focus:ring-blue-500'
+            }),
+            'last_connection_status': forms.Select(attrs={
+                'class': 'block w-full rounded-md border-zinc-300 shadow-sm focus:border-blue-500 focus:ring-blue-500 sm:text-sm p-2'
+            }),
+            'last_seen': forms.DateTimeInput(attrs={
+                'type': 'datetime-local',
+                'class': 'block w-full rounded-md border-zinc-300 shadow-sm focus:border-blue-500 focus:ring-blue-500 sm:text-sm p-2'
+            }),
+        }
+        
+        
+        
+class WeighingProcessForm(forms.ModelForm):
+    class Meta:
+        model = WeighingProcess
+        fields = [
+            'name',
+            'description',
+            'custom_fields_schema',
+            'erp_target_model',
+            'is_active'
+        ]
+    
+    widgets = {
+        'name': forms.TextInput(attrs={
+            'class': 'block w-full rounded-md border-zinc-300 shadow-sm focus:border-blue-500 focus:ring-blue-500 sm:text-sm p-2'
+        }),
+        'description': forms.Textarea(attrs={
+            'class': 'block w-full rounded-md border-zinc-300 shadow-sm focus:border-blue-500 focus:ring-blue-500 sm:text-sm p-2'
+        }),
+        'custom_fields_schema': forms.Textarea(attrs={
+            'class': 'block w-full rounded-md border-zinc-300 shadow-sm focus:border-blue-500 focus:ring-blue-500 sm:text-sm p-2'
+        }),
+        'erp_target_model': forms.TextInput(attrs={
+            'class': 'block w-full rounded-md border-zinc-300 shadow-sm focus:border-blue-500 focus:ring-blue-500 sm:text-sm p-2'
+        }),
+        'is_active': forms.CheckboxInput(attrs={
+            'class': 'h-4 w-4 text-blue-600 border-zinc-300 rounded focus:ring-blue-500'
+        }),
+    }
+    
+    
+class ProductForm(forms.ModelForm):
+    class Meta:
+        model = Product
+        fields = [
+            'name',
+            'description',
+            'erp_product_id',
+            'is_active'
+        ]
+        
+        widgets = {
+            'name': forms.TextInput(attrs={
+                'class': 'block w-full rounded-md border-zinc-300 shadow-sm focus:border-blue-500 focus:ring-blue-500 sm:text-sm p-2'
+            }),
+            'description': forms.Textarea(attrs={
+                'class': 'block w-full rounded-md border-zinc-300 shadow-sm focus:border-blue-500 focus:ring-blue-500 sm:text-sm p-2'
+            }),
+            'erp_product_id': forms.TextInput(attrs={
+                'class': 'block w-full rounded-md border-zinc-300 shadow-sm focus:border-blue-500 focus:ring-blue-500 sm:text-sm p-2'
+            }),
+            'is_active': forms.CheckboxInput(attrs={
+                'class': 'h-4 w-4 text-blue-600 border-zinc-300 rounded focus:ring-blue-500'
+            }),
+        }
+    
+    
+class DeliveryNoteForm(forms.ModelForm):
+    class Meta:
+        model = DeliveryNote
+        fields = [
+            'delivery_note_number',
+            'created_by',
+            'status',
+            'is_synced',
+            'last_sync_attempt',
+            'sync_error_message',
+            'notes'
+        ]
+    
+    widgets = {
+        'delivery_note_number': forms.TextInput(attrs={
+            'class': 'block w-full rounded-md border-zinc-300 shadow-sm focus:border-blue-500 focus:ring-blue-500 sm:text-sm p-2'
+        }),
+        
+        'status': forms.Select(attrs={
+            'class': 'block w-full rounded-md border-zinc-300 shadow-sm focus:border-blue-500 focus:ring-blue-500 sm:text-sm p-2'
+        }),
+        
+        'notes': forms.Textarea(attrs={
+            'class': 'block w-full rounded-md border-zinc-300 shadow-sm focus:border-blue-500 focus:ring-blue-500 sm:text-sm p-2 h-16'
+        }),
+
+
+    }
+    
+    
+    
+    
+    
