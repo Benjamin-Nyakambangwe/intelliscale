@@ -9,48 +9,139 @@
         <p class="mt-2 text-zinc-600">Record new weighing measurements and add them to delivery notes.</p>
     </div>
 
-    {% if messages %}
-        <div class="mb-6">
+    {% comment %} {% if messages %}
+        <script>
+            // Display Django messages as JavaScript alerts
             {% for message in messages %}
-                <div class="bg-{% if message.tags == 'success' %}green{% elif message.tags == 'error' %}red{% else %}blue{% endif %}-50 border border-{% if message.tags == 'success' %}green{% elif message.tags == 'error' %}red{% else %}blue{% endif %}-200 text-{% if message.tags == 'success' %}green{% elif message.tags == 'error' %}red{% else %}blue{% endif %}-600 text-sm rounded-md p-4 mb-4">
-                    {{ message }}
-                </div>
+                {% if message.tags == 'error' %}
+                    console.log('ERROR:', "{{ message }}");
+                    alert("❌ {{ message }}");
+                {% elif message.tags == 'success' %}
+                    alert("✅ {{ message }}");
+                {% else %}
+                    alert("{{ message }}");
+                    console.log('ELSE:', "{{ message }}");
+                {% endif %}
             {% endfor %}
-        </div>
-    {% endif %}
+        </script>
+    {% endif %} {% endcomment %}
 
 <form id="weighing-form" method="post" action="{% url 'scale:weighing_station' %}">
     {% csrf_token %}
-    <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
-        <!-- Left column -->
-        <div class="lg:col-span-2 space-y-6">
-            <!-- Scale Connection Card -->
-            <div class="bg-white shadow rounded-lg overflow-hidden border border-zinc-200">
-                <div class="px-6 py-5 border-b border-zinc-200">
-                    <h2 class="text-lg font-medium text-zinc-900">Scale Connection</h2>
+    <div class="grid grid-cols-4 gap-6">
+        <!-- Left column - Machine/Weighing Data (75%) -->
+        <div class="col-span-3 space-y-6">
+            <!-- MACHINE Section -->
+            <div class="bg-white shadow rounded-lg overflow-hidden border border-zinc-200" style="height: 90vh; display: flex; flex-direction: column;">
+                <div class="px-2 py-2 border-b border-zinc-200 flex justify-between">
+                    <h2 class="text-lg font-medium text-zinc-900">MACHINE</h2>
+                    <div class="flex justify-between items-center">
+                        <button id="get-weight-btn" type="button" class="inline-flex items-center justify-center whitespace-nowrap rounded-md text-sm font-medium bg-blue-600 text-white hover:bg-blue-700 h-10 px-4 py-2">
+                            Get Weight
+                        </button>
+                        <select id="unit-select" name="unit_of_measure" class="rounded-md border-zinc-300 shadow-sm focus:border-blue-500 focus:ring-blue-500 sm:text-sm p-2">
+                            <option value="kg">kg</option>
+                            <option value="g">g</option>
+                            <option value="lb">lb</option>
+                            <option value="oz">oz</option>
+                        </select>
+                    </div>
                 </div>
-                <div class="p-6">
-                    <div class="flex justify-between items-center mb-4">
+                <div class="p-6 flex-grow overflow-auto">
+                    <!-- Weighing Data Section -->
+                    <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
                         <div>
-                            <label for="scale-select" class="block text-sm font-medium text-zinc-700 mb-1">Select Scale</label>
-                            <select id="scale-select" name="scale_id" class="block w-full rounded-md border-zinc-300 shadow-sm focus:border-blue-500 focus:ring-blue-500 sm:text-sm p-2">
-                                <option value="">Select a scale...</option>
-                                {% for scale in scales %}
-                                    <option value="{{ scale.id }}">{{ scale.name }} ({{ scale.model_number }})</option>
-                                {% endfor %}
-                            </select>
+                            <label class="block text-sm font-medium text-zinc-700 mb-1">Gross Weight</label>
+                            <div class="flex">
+                                <input type="text" id="gross-weight" name="gross_weight" readonly class="block w-full rounded-l-md border-zinc-300 shadow-sm focus:border-blue-500 focus:ring-blue-500 sm:text-sm p-2 bg-zinc-50" placeholder="0.00" required>
+                                <span class="inline-flex items-center rounded-r-md border border-l-0 border-zinc-300 bg-zinc-50 px-3 text-zinc-500 sm:text-sm">
+                                    <span id="unit-display-gross">kg</span>
+                                </span>
+                            </div>
                         </div>
-                        <div class="flex items-center space-x-2 mt-6">
-                            <span id="connection-status" class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-red-100 text-red-800">
-                                Disconnected
-                            </span>
-                            <button id="connect-scale-btn" type="button" class="inline-flex items-center justify-center whitespace-nowrap rounded-md text-sm font-medium bg-zinc-900 text-zinc-50 hover:bg-zinc-900/90 h-10 px-4 py-2">
-                                Connect
+                        <div>
+                            <label class="block text-sm font-medium text-zinc-700 mb-1">Tare Weight</label>
+                            <div class="flex">
+                                <input type="number" id="tare-weight" name="tare_weight" class="block w-full rounded-l-md border-zinc-300 shadow-sm focus:border-blue-500 focus:ring-blue-500 sm:text-sm p-2" placeholder="0.00" step="0.01">
+                                <span class="inline-flex items-center rounded-r-md border border-l-0 border-zinc-300 bg-zinc-50 px-3 text-zinc-500 sm:text-sm">
+                                    <span id="unit-display-tare">kg</span>
+                                </span>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <!-- Net Weight as headline text -->
+                    <div class="mt-8 mb-8 text-center">
+                        <h3 class="text-sm font-medium text-zinc-500 uppercase">Net Weight</h3>
+                        <div class="flex items-center justify-center mt-2">
+                            <span id="net-weight-display" class="text-9xl font-bold text-zinc-900">0.00</span>
+                            <span id="unit-display-net" class="ml-2 text-xl text-zinc-500">kg</span>
+                        </div>
+                        <!-- Hidden input to hold the actual value for form submission -->
+                        <input type="hidden" id="net-weight" name="net_weight" value="0.00">
+                    </div>
+
+                    
+
+                    <div id="custom-fields-container" class="space-y-4 hidden mt-6 mb-6">
+                        <!-- Custom fields will be dynamically added here based on the selected process -->
+                    </div>
+                    
+                    <!-- Action Buttons (moved from DATA section) -->
+                    <div class="mt-auto pt-6">
+                        <!-- Barcode Input Field -->
+                        {% comment %} <div class="mb-4">
+                            <label for="barcode-input" class="block text-sm font-medium text-zinc-700 mb-1">Barcode</label>
+                            <div class="flex items-center space-x-1">
+                                <input type="text" id="barcode-input" name="barcode" class="block w-full rounded-md border-zinc-300 shadow-sm focus:border-blue-500 focus:ring-blue-500 sm:text-sm p-2" placeholder="Enter or scan barcode">
+                                <button id="scan-item-barcode-btn" type="button" class="inline-flex items-center justify-center whitespace-nowrap rounded-md text-sm font-medium bg-zinc-900 text-zinc-50 hover:bg-zinc-900/90 h-10 px-3 py-2">
+                                    <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" viewBox="0 0 20 20" fill="currentColor">
+                                        <path d="M2 4h2V2H2v2zm4 0h2V2H6v2zm4 0h2V2h-2v2zm4 0h2V2h-2v2z" />
+                                        <path d="M18 6H2v12h16V6zM4 16H2v-2h2v2zm0-4H2v-2h2v2zm0-4H2V6h2v2zm4 8H6v-2h2v2zm0-4H6v-2h2v2zm0-4H6V6h2v2zm4 8h-2v-2h2v2zm0-4h-2v-2h2v2zm0-4h-2V6h2v2zm4 8h-2v-2h2v2zm0-4h-2v-2h2v2zm0-4h-2V6h2v2z" />
+                                    </svg>
+                                </button>
+                            </div>
+                        </div> {% endcomment %}
+
+                        <div class="mb-4">
+                            <label for="barcode-input" class="block text-sm font-medium text-zinc-700 mb-1">Barcode</label>
+                            <input type="text" 
+                                   id="barcode-input" 
+                                   name="barcode" 
+                                   class="block w-full rounded-md border-zinc-300 shadow-sm focus:border-blue-500 focus:ring-blue-500 sm:text-sm p-2" 
+                                   placeholder="Focus here and scan barcode"
+                                   autocomplete="off"
+                                   autofocus required>
+                        </div>
+                        
+                        <div class="flex space-x-2">
+                            <button id="save-btn" type="submit" class="inline-flex items-center justify-center whitespace-nowrap rounded-md text-sm font-medium bg-zinc-900 text-zinc-50 hover:bg-zinc-900/90 h-10 px-4 py-2 w-1/2">
+                                Save
+                            </button>
+                            <button id="save-print-btn" type="button" class="inline-flex items-center justify-center whitespace-nowrap rounded-md text-sm font-medium bg-blue-600 text-white hover:bg-blue-700 h-10 px-4 py-2 w-1/2">
+                                <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4 mr-2" viewBox="0 0 20 20" fill="currentColor">
+                                    <path fill-rule="evenodd" d="M5 4v3H4a2 2 0 00-2 2v3a2 2 0 002 2h1v2a2 2 0 002 2h6a2 2 0 002-2v-2h1a2 2 0 002-2V9a2 2 0 00-2-2h-1V4a2 2 0 00-2-2H7a2 2 0 00-2 2zm8 0H7v3h6V4zm0 8H7v4h6v-4z" clip-rule="evenodd" />
+                                </svg>
+                                Save & Print
+                            </button>
+                            <button id="clear-btn" type="button" class="inline-flex items-center justify-center whitespace-nowrap rounded-md text-sm font-medium border border-zinc-300 bg-white text-zinc-700 hover:bg-zinc-50 h-10 px-4 py-2 w-1/2">
+                                Clear Form
                             </button>
                         </div>
                     </div>
+                </div>
+            </div>
+
+            <!-- DATA Section (Removed Notes, will move to right column) -->
+            <div class="bg-white shadow rounded-lg overflow-hidden border border-zinc-200">
+                <div class="px-6 py-5 border-b border-zinc-200">
+                    <h2 class="text-lg font-medium text-zinc-900">DATA</h2>
+                </div>
+                <div class="p-6">
+                    <!-- This section is now empty except for custom fields which are handled dynamically -->
+                    <p class="text-sm text-zinc-500">Additional data fields will appear here based on the selected process.</p>
                     <div id="scale-info" class="hidden border border-zinc-200 rounded-md p-4 bg-zinc-50 mt-4">
-                        <div class="grid grid-cols-2 gap-4">
+                        <div class="space-y-2">
                             <div>
                                 <span class="text-sm text-zinc-500">Manufacturer:</span>
                                 <span id="scale-manufacturer" class="ml-2 text-sm font-medium text-zinc-900">-</span>
@@ -69,86 +160,9 @@
                             </div>
                         </div>
                     </div>
-                </div>
-            </div>
-
-            <!-- Weighing Data Card -->
-            <div class="bg-white shadow rounded-lg overflow-hidden border border-zinc-200">
-                <div class="px-6 py-5 border-b border-zinc-200">
-                    <h2 class="text-lg font-medium text-zinc-900">Weighing Data</h2>
-                </div>
-                <div class="p-6">
-                    <div class="flex justify-between items-center mb-6">
-                        <button id="get-weight-btn" type="button" class="inline-flex items-center justify-center whitespace-nowrap rounded-md text-sm font-medium bg-blue-600 text-white hover:bg-blue-700 h-10 px-4 py-2">
-                            Get Weight
-                        </button>
-                        <select id="unit-select" name="unit_of_measure" class="rounded-md border-zinc-300 shadow-sm focus:border-blue-500 focus:ring-blue-500 sm:text-sm p-2">
-                            <option value="kg">kg</option>
-                            <option value="g">g</option>
-                            <option value="lb">lb</option>
-                            <option value="oz">oz</option>
-                        </select>
-                    </div>
-                    
-                    <div class="grid grid-cols-1 md:grid-cols-3 gap-6">
-                        <div>
-                            <label class="block text-sm font-medium text-zinc-700 mb-1">Gross Weight</label>
-                            <div class="flex">
-                                <input type="text" id="gross-weight" name="gross_weight" readonly class="block w-full rounded-l-md border-zinc-300 shadow-sm focus:border-blue-500 focus:ring-blue-500 sm:text-sm p-2 bg-zinc-50" placeholder="0.00">
-                                <span class="inline-flex items-center rounded-r-md border border-l-0 border-zinc-300 bg-zinc-50 px-3 text-zinc-500 sm:text-sm">
-                                    <span id="unit-display-gross">kg</span>
-                                </span>
-                            </div>
-                        </div>
-                        <div>
-                            <label class="block text-sm font-medium text-zinc-700 mb-1">Tare Weight</label>
-                            <div class="flex">
-                                <input type="number" id="tare-weight" name="tare_weight" class="block w-full rounded-l-md border-zinc-300 shadow-sm focus:border-blue-500 focus:ring-blue-500 sm:text-sm p-2" placeholder="0.00" step="0.01">
-                                <span class="inline-flex items-center rounded-r-md border border-l-0 border-zinc-300 bg-zinc-50 px-3 text-zinc-500 sm:text-sm">
-                                    <span id="unit-display-tare">kg</span>
-                                </span>
-                            </div>
-                        </div>
-                        <div>
-                            <label class="block text-sm font-medium text-zinc-700 mb-1">Net Weight</label>
-                            <div class="flex">
-                                <input type="text" id="net-weight" name="net_weight" readonly class="block w-full rounded-l-md border-zinc-300 shadow-sm focus:border-blue-500 focus:ring-blue-500 sm:text-sm p-2 bg-zinc-50" placeholder="0.00">
-                                <span class="inline-flex items-center rounded-r-md border border-l-0 border-zinc-300 bg-zinc-50 px-3 text-zinc-500 sm:text-sm">
-                                    <span id="unit-display-net">kg</span>
-                                </span>
-                            </div>
-                        </div>
-                    </div>
-                </div>
-            </div>
-
-            <!-- Product Information Card -->
-            <div class="bg-white shadow rounded-lg overflow-hidden border border-zinc-200">
-                <div class="px-6 py-5 border-b border-zinc-200">
-                    <h2 class="text-lg font-medium text-zinc-900">Product Information</h2>
-                </div>
-                <div class="p-6">
-                    <div class="mb-4">
-                        <div class="flex items-center space-x-2 mb-4">
-                            <button id="scan-barcode-btn" type="button" class="inline-flex items-center justify-center whitespace-nowrap rounded-md text-sm font-medium bg-zinc-900 text-zinc-50 hover:bg-zinc-900/90 h-10 px-4 py-2">
-                                <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4 mr-2" viewBox="0 0 20 20" fill="currentColor">
-                                    <path d="M2 4h2V2H2v2zm4 0h2V2H6v2zm4 0h2V2h-2v2zm4 0h2V2h-2v2z" />
-                                    <path d="M18 6H2v12h16V6zM4 16H2v-2h2v2zm0-4H2v-2h2v2zm0-4H2V6h2v2zm4 8H6v-2h2v2zm0-4H6v-2h2v2zm0-4H6V6h2v2zm4 8h-2v-2h2v2zm0-4h-2v-2h2v2zm0-4h-2V6h2v2zm4 8h-2v-2h2v2zm0-4h-2v-2h2v2zm0-4h-2V6h2v2z" />
-                                </svg>
-                                Scan Barcode
-                            </button>
-                            <span class="text-sm text-zinc-500">or</span>
-                            <select id="product-select" name="product_id" class="block w-full rounded-md border-zinc-300 shadow-sm focus:border-blue-500 focus:ring-blue-500 sm:text-sm p-2">
-                                <option value="">Select a product...</option>
-                                {% for product in products %}
-                                    <option value="{{ product.id }}">{{ product.name }}</option>
-                                {% endfor %}
-                            </select>
-                        </div>
-                    </div>
 
                     <div id="product-details" class="hidden border border-zinc-200 rounded-md p-4 bg-zinc-50">
-                        <div class="grid grid-cols-2 gap-4">
+                        <div class="space-y-2">
                             <div>
                                 <span class="text-sm text-zinc-500">Product Name:</span>
                                 <span id="product-name" class="ml-2 text-sm font-medium text-zinc-900">-</span>
@@ -157,117 +171,155 @@
                                 <span class="text-sm text-zinc-500">ERP ID:</span>
                                 <span id="product-erp-id" class="ml-2 text-sm font-medium text-zinc-900">-</span>
                             </div>
-                            <div class="col-span-2">
+                            <div>
                                 <span class="text-sm text-zinc-500">Description:</span>
                                 <span id="product-description" class="ml-2 text-sm font-medium text-zinc-900">-</span>
                             </div>
                         </div>
                     </div>
                 </div>
-            </div>
+            </div> 
         </div>
 
-        <!-- Right column -->
-        <div class="space-y-6">
+        <!-- Right column - Scale Connection (25%) -->
+        <div class="col-span-1 space-y-6">
+            <!-- Scale Connection Card -->
+            <div class="bg-white shadow rounded-lg overflow-hidden border border-zinc-200">
+                <div class="px-3 py-2 border-b border-zinc-200">
+                    <h2 class="text-lg font-medium text-zinc-900">SCALE CONNECTION</h2>
+                </div>
+                <div class="p-3">
+                    <div class="mb-2">
+                        <label for="scale-select" class="block text-sm font-medium text-zinc-700 mb-1">Select Scale</label>
+                        <select id="scale-select" name="scale_id" class="block w-full rounded-md border-zinc-300 shadow-sm focus:border-blue-500 focus:ring-blue-500 sm:text-sm p-1">
+                            <option value="">Select a scale...</option>
+                            {% for scale in scales %}
+                                <option value="{{ scale.id }}">{{ scale.name }}</option>
+                            {% endfor %}
+                        </select>
+                    </div>
+
+                    <div class="mt-2 flex items-center justify-between">
+                        <span id="connection-status" class="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium bg-red-100 text-red-800">
+                            Disconnected
+                        </span>
+                        <button id="connect-scale-btn" type="button" class="inline-flex items-center justify-center whitespace-nowrap rounded-md text-sm font-medium bg-zinc-900 text-zinc-50 hover:bg-zinc-900/90 h-8 px-3 py-1">
+                            Connect
+                        </button>
+                    </div>
+                </div>
+            </div>
+            
+            <!-- Product Selection Card -->
+            <div class="bg-white shadow rounded-lg overflow-hidden border border-zinc-200">
+                <div class="px-3 py-2 border-b border-zinc-200">
+                    <h2 class="text-lg font-medium text-zinc-900">PRODUCT</h2>
+                </div>
+                <div class="p-3">
+                    <div>
+                        <label class="block text-sm font-medium text-zinc-700 mb-1">Product</label>
+                        <div class="flex items-center space-x-1">
+                            <select id="product-select" name="product_id" class="block w-full rounded-md border-zinc-300 shadow-sm focus:border-blue-500 focus:ring-blue-500 sm:text-sm p-1">
+                                <option value="">Select a product...</option>
+                                {% for product in products %}
+                                    <option value="{{ product.id }}">{{ product.name }}</option>
+                                {% endfor %}
+                            </select>
+                            <button id="scan-barcode-btn" type="button" class="inline-flex items-center justify-center whitespace-nowrap rounded-md text-sm font-medium bg-zinc-900 text-zinc-50 hover:bg-zinc-900/90 h-8 px-2 py-1">
+                                <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" viewBox="0 0 20 20" fill="currentColor">
+                                    <path d="M2 4h2V2H2v2zm4 0h2V2H6v2zm4 0h2V2h-2v2zm4 0h2V2h-2v2z" />
+                                    <path d="M18 6H2v12h16V6zM4 16H2v-2h2v2zm0-4H2v-2h2v2zm0-4H2V6h2v2zm4 8H6v-2h2v2zm0-4H6v-2h2v2zm0-4H6V6h2v2zm4 8h-2v-2h2v2zm0-4h-2v-2h2v2zm0-4h-2V6h2v2zm4 8h-2v-2h2v2zm0-4h-2v-2h2v2zm0-4h-2V6h2v2z" />
+                                </svg>
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
             <!-- Weighing Process Card -->
             <div class="bg-white shadow rounded-lg overflow-hidden border border-zinc-200">
-                <div class="px-6 py-5 border-b border-zinc-200">
-                    <h2 class="text-lg font-medium text-zinc-900">Weighing Process</h2>
+                <div class="px-3 py-2 border-b border-zinc-200">
+                    <h2 class="text-lg font-medium text-zinc-900">WEIGHING PROCESS</h2>
                 </div>
-                <div class="p-6">
-                    <div class="mb-4">
-                        <label for="process-select" class="block text-sm font-medium text-zinc-700 mb-1">Process Type</label>
-                        <select id="process-select" name="process_id" class="block w-full rounded-md border-zinc-300 shadow-sm focus:border-blue-500 focus:ring-blue-500 sm:text-sm p-2">
+                <div class="p-3">
+                    <div>
+                        <label for="process-select" class="block text-sm font-medium text-zinc-700 mb-1">Weighing Process</label>
+                        <select id="process-select" name="process_id" class="block w-full rounded-md border-zinc-300 shadow-sm focus:border-blue-500 focus:ring-blue-500 sm:text-sm p-1">
                             <option value="">Select a process...</option>
                             {% for process in processes %}
                                 <option value="{{ process.id }}">{{ process.name }}</option>
                             {% endfor %}
                         </select>
                     </div>
-
-                    <div id="custom-fields-container" class="space-y-4 hidden">
-                        <!-- Custom fields will be dynamically added here based on the selected process -->
-                    </div>
                 </div>
             </div>
-
+            
+            <!-- Notes Card (Moved from DATA section) -->
+            <div class="bg-white shadow rounded-lg overflow-hidden border border-zinc-200">
+                <div class="px-6 py-5 border-b border-zinc-200">
+                    <h2 class="text-lg font-medium text-zinc-900">NOTES</h2>
+                </div>
+                <div class="p-6">
+                    <label for="notes" class="block text-sm font-medium text-zinc-700 mb-1">Notes</label>
+                    <textarea id="notes" name="notes" class="block w-full rounded-md border-zinc-300 shadow-sm focus:border-blue-500 focus:ring-blue-500 sm:text-sm p-2" rows="4" placeholder="Enter any additional notes..."></textarea>
+                </div>
+            </div>
+            
             <!-- Delivery Note Card -->
             <div class="bg-white shadow rounded-lg overflow-hidden border border-zinc-200">
                 <div class="px-6 py-5 border-b border-zinc-200">
-                    <h2 class="text-lg font-medium text-zinc-900">Delivery Note</h2>
+                    <h2 class="text-lg font-medium text-zinc-900">DELIVERY NOTE</h2>
                 </div>
                 <div class="p-6">
-                    <div class="mb-4">
-                        <div class="flex items-center space-x-2">
-                            <input type="checkbox" id="add-to-delivery-note" name="add_to_delivery_note" class="h-4 w-4 text-blue-600 border-zinc-300 rounded focus:ring-blue-500">
-                            <label for="add-to-delivery-note" class="text-sm font-medium text-zinc-700">Add to delivery note</label>
-                        </div>
+                    <div class="flex items-center space-x-2 mb-4">
+                        <input type="checkbox" id="add-to-delivery-note" name="add_to_delivery_note" class="h-4 w-4 text-blue-600 border-zinc-300 rounded focus:ring-blue-500">
+                        <label for="add-to-delivery-note" class="text-sm font-medium text-zinc-700">Add to delivery note</label>
                     </div>
 
-                    <div id="delivery-note-selection" class="hidden space-y-4">
-                        <div class="flex items-center space-x-2">
-                            <input type="radio" id="existing-note" name="note_option" value="existing" class="h-4 w-4 text-blue-600 border-zinc-300 rounded-full focus:ring-blue-500">
-                            <label for="existing-note" class="text-sm font-medium text-zinc-700">Existing note</label>
-                        </div>
-                        
-                        <div id="existing-note-container" class="pl-6 hidden">
-                            <select id="delivery-note-select" name="delivery_note_id" class="block w-full rounded-md border-zinc-300 shadow-sm focus:border-blue-500 focus:ring-blue-500 sm:text-sm p-2">
-                                <option value="">Select a delivery note...</option>
-                                {% for note in delivery_notes %}
-                                    <option value="{{ note.id }}">{{ note.delivery_note_number }}</option>
-                                {% endfor %}
-                            </select>
-                        </div>
-
-                        <div class="flex items-center space-x-2">
-                            <input type="radio" id="new-note" name="note_option" value="new" class="h-4 w-4 text-blue-600 border-zinc-300 rounded-full focus:ring-blue-500">
-                            <label for="new-note" class="text-sm font-medium text-zinc-700">Create new note</label>
-                        </div>
-                        
-                        <div id="new-note-container" class="pl-6 hidden">
-                            <div class="mb-2">
-                                <label for="new-note-number" class="block text-sm font-medium text-zinc-700 mb-1">Delivery Note Number</label>
-                                <input type="text" id="new-note-number" name="new_note_number" class="block w-full rounded-md border-zinc-300 shadow-sm focus:border-blue-500 focus:ring-blue-500 sm:text-sm p-2" placeholder="Enter note number">
-                            </div>
+                    <div id="delivery-note-selection" class="hidden">
+                        <div class="space-y-4">
                             <div>
-                                <label for="new-note-status" class="block text-sm font-medium text-zinc-700 mb-1">Status</label>
-                                <select id="new-note-status" name="new_note_status" class="block w-full rounded-md border-zinc-300 shadow-sm focus:border-blue-500 focus:ring-blue-500 sm:text-sm p-2">
-                                    <option value="draft">Draft</option>
-                                    <option value="confirmed">Confirmed</option>
-                                    <option value="cancelled">Cancelled</option>
-                                </select>
+                                <div class="flex items-center space-x-2 mb-2">
+                                    <input type="radio" id="existing-note" name="note_option" value="existing" class="h-4 w-4 text-blue-600 border-zinc-300 rounded-full focus:ring-blue-500">
+                                    <label for="existing-note" class="text-sm font-medium text-zinc-700">Existing note</label>
+                                </div>
+                                <div id="existing-note-container" class="pl-6 hidden">
+                                    <select id="delivery-note-select" name="delivery_note_id" class="block w-full rounded-md border-zinc-300 shadow-sm focus:border-blue-500 focus:ring-blue-500 sm:text-sm p-2">
+                                        <option value="">Select a delivery note...</option>
+                                        {% for note in delivery_notes %}
+                                            <option value="{{ note.id }}">{{ note.delivery_note_number }}</option>
+                                        {% endfor %}
+                                    </select>
+                                </div>
+                            </div>
+                            
+                            <div>
+                                <div class="flex items-center space-x-2 mb-2">
+                                    <input type="radio" id="new-note" name="note_option" value="new" class="h-4 w-4 text-blue-600 border-zinc-300 rounded-full focus:ring-blue-500">
+                                    <label for="new-note" class="text-sm font-medium text-zinc-700">Create new note</label>
+                                </div>
+                                <div id="new-note-container" class="pl-6 hidden">
+                                    <input type="text" id="new-note-number" name="new_note_number" class="block w-full rounded-md border-zinc-300 shadow-sm focus:border-blue-500 focus:ring-blue-500 sm:text-sm p-2 mb-2" placeholder="Enter note number">
+                                    <select id="new-note-status" name="new_note_status" class="block w-full rounded-md border-zinc-300 shadow-sm focus:border-blue-500 focus:ring-blue-500 sm:text-sm p-2">
+                                        <option value="draft">Draft</option>
+                                        <option value="confirmed">Confirmed</option>
+                                        <option value="cancelled">Cancelled</option>
+                                    </select>
+                                </div>
                             </div>
                         </div>
                     </div>
                 </div>
             </div>
-
-            <!-- Notes Card -->
+            
+            <!-- Recent Records Card -->
             <div class="bg-white shadow rounded-lg overflow-hidden border border-zinc-200">
                 <div class="px-6 py-5 border-b border-zinc-200">
-                    <h2 class="text-lg font-medium text-zinc-900">Notes</h2>
+                    <h2 class="text-lg font-medium text-zinc-900">RECENT RECORDS</h2>
                 </div>
                 <div class="p-6">
-                    <textarea id="notes" name="notes" class="block w-full rounded-md border-zinc-300 shadow-sm focus:border-blue-500 focus:ring-blue-500 sm:text-sm p-2 h-24" placeholder="Enter any additional notes..."></textarea>
-                </div>
-            </div>
-
-            <!-- Actions Card -->
-            <div class="bg-white shadow rounded-lg overflow-hidden border border-zinc-200">
-                <div class="p-6">
-                    <div class="flex flex-col space-y-3">
-                        <button id="save-btn" type="submit" class="inline-flex items-center justify-center whitespace-nowrap rounded-md text-sm font-medium bg-zinc-900 text-zinc-50 hover:bg-zinc-900/90 h-10 px-4 py-2">
-                            Save
-                        </button>
-                        <button id="save-print-btn" type="button" class="inline-flex items-center justify-center whitespace-nowrap rounded-md text-sm font-medium bg-blue-600 text-white hover:bg-blue-700 h-10 px-4 py-2">
-                            <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4 mr-2" viewBox="0 0 20 20" fill="currentColor">
-                                <path fill-rule="evenodd" d="M5 4v3H4a2 2 0 00-2 2v3a2 2 0 002 2h1v2a2 2 0 002 2h6a2 2 0 002-2v-2h1a2 2 0 002-2V9a2 2 0 00-2-2h-1V4a2 2 0 00-2-2H7a2 2 0 00-2 2zm8 0H7v3h6V4zm0 8H7v4h6v-4z" clip-rule="evenodd" />
-                            </svg>
-                            Save & Print
-                        </button>
-                        <button id="clear-btn" type="button" class="inline-flex items-center justify-center whitespace-nowrap rounded-md text-sm font-medium border border-zinc-300 bg-white text-zinc-700 hover:bg-zinc-50 h-10 px-4 py-2">
-                            Clear Form
-                        </button>
+                    <div class="text-sm text-zinc-500">
+                        Last 3 records will appear here
                     </div>
                 </div>
             </div>
@@ -278,8 +330,131 @@
 {% endblock %}
 
 {% block extra_scripts %}
+<script src="https://code.jquery.com/jquery-3.7.1.min.js" integrity="sha256-/JqT3SQfawRcv/BIHPThkBvs0OEvtFFmqPF/lYI/Cxo=" crossorigin="anonymous"></script>
 <script>
+    console.log('Script loaded - outside DOM content loaded');
+    
+    // Move updateScaleInfo function to global scope so it's accessible from HTML
+    function updateScaleInfo(scaleId) {
+        console.log('Updating scale info for scaleId:', scaleId);
+        localStorage.setItem('lastScaleId', scaleId);
+        // You can add more logic here to fetch and display scale information
+    }
+    // Move updateProductInfo function to global scope so it's accessible from HTML
+    function updateProductInfo(productId) {
+        console.log('Updating product info for productId:', productId);
+        localStorage.setItem('lastProductId', productId);
+    }
+    // Move updateProcessInfo function to global scope so it's accessible from HTML
+    function updateProcessInfo(processId) {
+        console.log('Updating process info for processId:', processId);
+        localStorage.setItem('lastProcessId', processId);
+
+    }
+    
     document.addEventListener('DOMContentLoaded', function() {
+        console.log('DOM loaded - script running');
+        console.log('Last scale ID:', localStorage.getItem('lastScaleId'));
+        
+        // Toggle scale info visibility when a scale is selected
+        const scaleSelect = document.getElementById('scale-select');
+        const scaleInfo = document.getElementById('scale-info');
+        
+        // Toggle product details visibility when a product is selected
+        const productSelect = document.getElementById('product-select');
+        const productDetails = document.getElementById('product-details');
+        
+        // Toggle custom fields visibility when a process is selected
+        const processSelect = document.getElementById('process-select');
+        const customFieldsContainer = document.getElementById('custom-fields-container');
+        
+        // Parse process custom fields data from the template
+        const processCustomFields = JSON.parse('{{ process_custom_fields|escapejs }}');
+        
+        // Now restore saved values after all elements and data are defined
+        if (localStorage.getItem('lastScaleId')) {
+            $('#scale-select').val(localStorage.getItem('lastScaleId'));
+            updateScaleInfo(localStorage.getItem('lastScaleId'));
+            scaleInfo.classList.remove('hidden');
+        }
+        
+        if (localStorage.getItem('lastProductId')) {
+            $('#product-select').val(localStorage.getItem('lastProductId'));
+            updateProductInfo(localStorage.getItem('lastProductId'));
+            productDetails.classList.remove('hidden');
+        }
+        
+        if (localStorage.getItem('lastProcessId')) {
+            const savedProcessId = localStorage.getItem('lastProcessId');
+            $('#process-select').val(savedProcessId);
+            updateProcessInfo(savedProcessId);
+            
+            if (processCustomFields && processCustomFields[savedProcessId]) {
+                console.log('Loading custom fields for process:', savedProcessId);
+                customFieldsContainer.classList.remove('hidden');
+                const customFields = processCustomFields[savedProcessId] || [];
+                renderCustomFields(customFields);
+            }
+        }
+
+        // Try with jQuery event binding instead of addEventListener
+        $(document).on('click', '#connect-scale-btn', function() {
+            alert('Connect button clicked - jQuery event handler');
+            console.log('Connect button clicked - jQuery handler');
+            const scaleId = $('#scale-select').val();
+            console.log('Selected scale ID:', scaleId);
+            
+            if (!scaleId) {
+                alert('Please select a scale first');
+                return;
+            }
+            
+            // Change button state to loading
+            const originalText = $(this).text().trim();
+            $(this).html('<span class="animate-spin inline-block mr-2">⟳</span> Connecting...');
+            $(this).prop('disabled', true);
+            
+            // Send connection request using jQuery AJAX
+            const url = "{% url 'scale:connect_scale' 0 %}".replace('0', scaleId);
+            console.log('Fetching URL:', url);
+            
+            // Use jQuery AJAX instead of fetch API
+            $.ajax({
+                url: url,
+                type: 'POST',
+                headers: {
+                    'X-CSRFToken': '{{ csrf_token }}'
+                },
+                success: function(data) {
+                    console.log('Data received:', data);
+                    if (data.success) {
+                        $('#connection-status').text('Connected');
+                        $('#connection-status').attr('class', 'inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-green-100 text-green-800');
+                        
+                        // Update scale info if available
+                        if (data.status) {
+                            $('#scale-info').removeClass('hidden');
+                        }
+                    } else {
+                        $('#connection-status').text('Failed to Connect');
+                        $('#connection-status').attr('class', 'inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-red-100 text-red-800');
+                        alert('Failed to connect: ' + data.message);
+                    }
+                },
+                error: function(xhr, status, error) {
+                    console.log('Error:', error);
+                    $('#connection-status').text('Connection Error');
+                    $('#connection-status').attr('class', 'inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-red-100 text-red-800');
+                    alert('Error connecting to scale: ' + error);
+                },
+                complete: function() {
+                    // Reset button state
+                    $('#connect-scale-btn').html(originalText);
+                    $('#connect-scale-btn').prop('disabled', false);
+                }
+            });
+        });
+
         // Toggle delivery note section
         const addToDeliveryNoteCheckbox = document.getElementById('add-to-delivery-note');
         const deliveryNoteSelection = document.getElementById('delivery-note-selection');
@@ -312,6 +487,7 @@
         const grossWeightInput = document.getElementById('gross-weight');
         const tareWeightInput = document.getElementById('tare-weight');
         const netWeightInput = document.getElementById('net-weight');
+        const netWeightDisplay = document.getElementById('net-weight-display');
         
         tareWeightInput.addEventListener('input', calculateNetWeight);
         
@@ -320,6 +496,7 @@
             const tareWeight = parseFloat(tareWeightInput.value) || 0;
             const netWeight = Math.max(0, grossWeight - tareWeight);
             netWeightInput.value = netWeight.toFixed(2);
+            netWeightDisplay.textContent = netWeight.toFixed(2);
         }
         
         // Update unit displays when unit is changed
@@ -336,30 +513,20 @@
         });
         
         // Toggle scale info visibility when a scale is selected
-        const scaleSelect = document.getElementById('scale-select');
-        const scaleInfo = document.getElementById('scale-info');
-        
         scaleSelect.addEventListener('change', function() {
             scaleInfo.classList.toggle('hidden', !this.value);
+            updateScaleInfo(this.value);
             // In a real implementation, you would fetch scale details here
         });
         
         // Toggle product details visibility when a product is selected
-        const productSelect = document.getElementById('product-select');
-        const productDetails = document.getElementById('product-details');
-        
         productSelect.addEventListener('change', function() {
             productDetails.classList.toggle('hidden', !this.value);
+            updateProductInfo(this.value);
             // In a real implementation, you would fetch product details here
         });
         
         // Toggle custom fields visibility when a process is selected
-        const processSelect = document.getElementById('process-select');
-        const customFieldsContainer = document.getElementById('custom-fields-container');
-        
-        // Parse process custom fields data from the template
-        const processCustomFields = JSON.parse('{{ process_custom_fields|escapejs }}');
-
         processSelect.addEventListener('change', function() {
             const processId = this.value;
             customFieldsContainer.classList.toggle('hidden', !processId);
@@ -372,6 +539,7 @@
                 // Clear custom fields
                 customFieldsContainer.innerHTML = '';
             }
+            updateProcessInfo(processId);
         });
         
         // Function to render custom fields
@@ -617,39 +785,80 @@
             grossWeightInput.value = (Math.random() * 20).toFixed(2);
             calculateNetWeight();
         });
-        
-        // Clear form button functionality
-        const clearBtn = document.getElementById('clear-btn');
-        
-        clearBtn.addEventListener('click', function() {
-            // Reset all form fields
+
+        // Function to selectively clear form fields after saving
+        function clearSelectedFields() {
+            // Reset weight fields
             grossWeightInput.value = '';
             tareWeightInput.value = '';
             netWeightInput.value = '';
+            netWeightDisplay.textContent = '0.00';
+            
+            // Reset notes
             document.getElementById('notes').value = '';
+            
+            // Reset barcode field
+            document.getElementById('barcode-input').value = '';
+            
+            // Clear custom fields - find and reset all inputs in the custom fields container
+            const customInputs = customFieldsContainer.querySelectorAll('input, select, textarea');
+            customInputs.forEach(input => {
+                if (input.type === 'checkbox' || input.type === 'radio') {
+                    input.checked = false;
+                } else {
+                    input.value = '';
+                }
+            });
+            
+            // We keep these unchanged:
+            // - Scale selection (scaleSelect)
+            // - Product selection (productSelect)
+            // - Process selection (processSelect)
+        }
+        
+        // Function to reset ALL form fields completely
+        function clearAllFields() {
+            // Reset all weight fields
+            grossWeightInput.value = '';
+            tareWeightInput.value = '';
+            netWeightInput.value = '';
+            netWeightDisplay.textContent = '0.00';
+            
+            // Reset notes
+            document.getElementById('notes').value = '';
+            
+            // Reset barcode field
+            document.getElementById('barcode-input').value = '';
+            
+            // Reset selections
             scaleSelect.selectedIndex = 0;
             scaleInfo.classList.add('hidden');
             productSelect.selectedIndex = 0;
             productDetails.classList.add('hidden');
             processSelect.selectedIndex = 0;
             customFieldsContainer.classList.add('hidden');
+            
+            // Reset current process display
+            document.getElementById('current-process-display').textContent = 'None selected';
+            
+            // Reset delivery note section
             addToDeliveryNoteCheckbox.checked = false;
             deliveryNoteSelection.classList.add('hidden');
-        });
-        
-        // Save & Print button functionality
-        const savePrintBtn = document.getElementById('save-print-btn');
-        
-        savePrintBtn.addEventListener('click', function() {
-            // Add a hidden input to indicate that we want to print after saving
-            const printInput = document.createElement('input');
-            printInput.type = 'hidden';
-            printInput.name = 'print_after_save';
-            printInput.value = 'true';
-            document.getElementById('weighing-form').appendChild(printInput);
             
-            // Submit the form
-            document.getElementById('weighing-form').submit();
+            // Clear custom fields
+            const customInputs = customFieldsContainer.querySelectorAll('input, select, textarea');
+            customInputs.forEach(input => {
+                if (input.type === 'checkbox' || input.type === 'radio') {
+                    input.checked = false;
+                } else {
+                    input.value = '';
+                }
+            });
+        }
+        
+        // Clear Form button should reset everything
+        clearBtn.addEventListener('click', function() {
+            clearAllFields();
         });
         
         // Form validation before submission
@@ -679,6 +888,15 @@
                 return;
             }
             
+            // Validate barcode field
+            const barcodeValue = document.getElementById('barcode-input').value.trim();
+            if (!barcodeValue) {
+                alert('Please enter or scan a barcode');
+                document.getElementById('barcode-input').focus();
+                event.preventDefault();
+                return;
+            }
+            
             // Validate weight fields
             if (!grossWeight || isNaN(parseFloat(grossWeight)) || parseFloat(grossWeight) <= 0) {
                 alert('Please get a valid gross weight measurement');
@@ -695,7 +913,11 @@
             }
             
             if (!netWeight || isNaN(parseFloat(netWeight)) || parseFloat(netWeight) <= 0) {
-                alert('Net weight must be a valid positive number');
+                alert('Net weight must be greater than zero');
+                netWeightDisplay.classList.add('text-red-600');
+                setTimeout(() => {
+                    netWeightDisplay.classList.remove('text-red-600');
+                }, 1000);
                 event.preventDefault();
                 return;
             }
@@ -726,6 +948,18 @@
                     return;
                 }
             }
+
+            console.log('Storing previous selections:', { scaleId, productId, processId });
+            
+            // Store form data before submission to restore after redirect
+            localStorage.setItem('lastScaleId', scaleId);
+            localStorage.setItem('lastProductId', productId);
+            localStorage.setItem('lastProcessId', processId);
+            
+            // Set a flag indicating we've just submitted the form successfully
+            localStorage.setItem('justSubmitted', 'true');
+
+            console.log('Saved scaleId', localStorage.getItem('lastScaleId'));
         });
 
         // Save button click handler to ensure netWeight is calculated before submission
@@ -733,6 +967,136 @@
             // Recalculate net weight to ensure it's up to date
             calculateNetWeight();
         });
+        
+        // Save & Print button functionality
+        const savePrintBtn = document.getElementById('save-print-btn');
+        
+        savePrintBtn.addEventListener('click', function() {
+            // Add a hidden input to indicate that we want to print after saving
+            const printInput = document.createElement('input');
+            printInput.type = 'hidden';
+            printInput.name = 'print_after_save';
+            printInput.value = 'true';
+            document.getElementById('weighing-form').appendChild(printInput);
+            
+            // Recalculate net weight to ensure it's up to date
+            calculateNetWeight();
+            
+            // Submit the form
+            document.getElementById('weighing-form').submit();
+        });
+        
+        // On page load, check if we're returning after a form submission
+        window.addEventListener('load', function() {
+            // Use our saved flag to detect if we've just submitted the form
+            const justSubmitted = localStorage.getItem('justSubmitted');
+            
+            if (justSubmitted === 'true') {
+                console.log('Form was just submitted successfully');
+                
+                // Clear the flag
+                localStorage.removeItem('justSubmitted');
+                
+                // Restore previously selected values
+                const lastScaleId = localStorage.getItem('lastScaleId');
+                const lastProductId = localStorage.getItem('lastProductId');
+                const lastProcessId = localStorage.getItem('lastProcessId');
+                
+                console.log('Restoring values:', {lastScaleId, lastProductId, lastProcessId});
+                
+                if (lastScaleId) {
+                    scaleSelect.value = lastScaleId;
+                    // Manually trigger scale display update
+                    scaleInfo.classList.remove('hidden');
+                }
+                
+                if (lastProductId) {
+                    productSelect.value = lastProductId;
+                    // Manually trigger product details display update
+                    productDetails.classList.remove('hidden');
+                }
+                
+                if (lastProcessId) {
+                    processSelect.value = lastProcessId;
+                    // Trigger process change to load custom fields if needed
+                    processSelect.dispatchEvent(new Event('change'));
+                }
+                
+                // Clear only the fields that should be reset after saving
+                clearSelectedFields();
+            }
+        });
+        
+        // Handle barcode scanning button click
+        // Handle USB barcode scanner input
+        const barcodeInput = document.getElementById('barcode-input');
+
+        // Ensure the input stays focused for scanning
+        barcodeInput.addEventListener('focus', function() {
+            console.log('Barcode input focused - ready to scan');
+        });
+
+        // Handle barcode scanner input (most scanners send Enter after the barcode)
+        barcodeInput.addEventListener('keypress', function(e) {
+            if (e.key === 'Enter') {
+                e.preventDefault(); // Prevent any form submission
+                
+                // Flash the input to provide visual feedback of successful scan
+                this.classList.add('bg-green-50');
+                setTimeout(() => {
+                    this.classList.remove('bg-green-50');
+                }, 500);
+                
+                console.log('Barcode scanned:', this.value);
+                // Do whatever you need with the barcode value here
+            }
+        });
+
+        // Auto-focus the input when page loads
+        window.addEventListener('load', function() {
+            barcodeInput.focus();
+        });
+
+        // Keep focus on the input field (helpful for continuous scanning)
+        document.addEventListener('click', function() {
+            if (document.activeElement !== barcodeInput) {
+                barcodeInput.focus();
+            }
+        });
+
+        // Optional: Auto-submit detection for scanners that don't send Enter
+        let scanTimeout;
+        barcodeInput.addEventListener('input', function() {
+            clearTimeout(scanTimeout);
+            
+            // If the input reaches a typical barcode length, assume scan is complete
+            if (this.value.length >= 8) { // Adjust this number based on your barcode format
+                scanTimeout = setTimeout(() => {
+                    // Flash visual feedback
+                    this.classList.add('bg-green-50');
+                    setTimeout(() => {
+                        this.classList.remove('bg-green-50');
+                    }, 500);
+                    
+                    console.log('Barcode detected:', this.value);
+                    // Process the barcode here
+                }, 100); // Small delay to ensure the scan is complete
+            }
+        });
+
+
+//        const scanItemBarcodeBtn = document.getElementById('scan-item-barcode-btn');
+//        const barcodeInput = document.getElementById('barcode-input');
+//        scanItemBarcodeBtn.addEventListener('click', function() {
+//            const randomBarcode = 'ITEM' + Math.floor(Math.random() * 1000000).toString().padStart(6, '0');
+//            barcodeInput.value = randomBarcode;
+//            barcodeInput.classList.add('bg-green-50');
+//            setTimeout(() => {
+//                barcodeInput.classList.remove('bg-green-50');
+//            }, 500);
+//        });
+
+
     });
 </script>
 {% endblock %}

@@ -46,6 +46,7 @@ class WeighingRecord(models.Model):
     scale = models.ForeignKey(Scale, on_delete=models.CASCADE)
     user = models.ForeignKey(CustomUser, on_delete=models.CASCADE)
     process = models.ForeignKey(WeighingProcess, on_delete=models.CASCADE)
+    barcode = models.CharField(max_length=100, blank=True)
     product = models.ForeignKey(Product, on_delete=models.CASCADE)
     timestamp = models.DateTimeField(auto_now_add=True)
     gross_weight = models.DecimalField(max_digits=10, decimal_places=2)
