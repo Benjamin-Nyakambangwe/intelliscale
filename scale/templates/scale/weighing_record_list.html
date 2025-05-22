@@ -1,0 +1,341 @@
+{% extends "scale/base.html" %}
+
+{% block title %}Weighing Records | IntelliScale{% endblock %}
+
+{% block content %}
+<div>
+    <div class="mb-6">
+        <h1 class="text-2xl font-semibold text-zinc-900">Weighing Records</h1>
+        <p class="mt-2 text-zinc-600">View and filter all weighing records.</p>
+    </div>
+
+    <!-- Filter Section -->
+    <div class="bg-white shadow rounded-lg overflow-hidden border border-zinc-200 mb-6">
+        <div class="px-6 py-4 border-b border-zinc-200">
+            <h2 class="text-lg font-medium text-zinc-900">Filters</h2>
+        </div>
+        <div class="p-6">
+            <form id="filter-form" method="get">
+                <div class="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-4">
+                    <!-- Scale Filter -->
+                    <div>
+                        <label for="scale-filter" class="block text-sm font-medium text-zinc-700 mb-1">Scale</label>
+                        <select id="scale-filter" name="scale" class="block w-full rounded-md border-zinc-300 shadow-sm focus:border-blue-500 focus:ring-blue-500 sm:text-sm p-2">
+                            <option value="">All Scales</option>
+                            {% for scale in scales %}
+                                <option value="{{ scale.id }}" {% if request.GET.scale == scale.id|stringformat:"i" %}selected{% endif %}>{{ scale.name }}</option>
+                            {% endfor %}
+                        </select>
+                    </div>
+
+                    <!-- Product Filter -->
+                    <div>
+                        <label for="product-filter" class="block text-sm font-medium text-zinc-700 mb-1">Product</label>
+                        <select id="product-filter" name="product" class="block w-full rounded-md border-zinc-300 shadow-sm focus:border-blue-500 focus:ring-blue-500 sm:text-sm p-2">
+                            <option value="">All Products</option>
+                            {% for product in products %}
+                                <option value="{{ product.id }}" {% if request.GET.product == product.id|stringformat:"i" %}selected{% endif %}>{{ product.name }}</option>
+                            {% endfor %}
+                        </select>
+                    </div>
+
+                    <!-- Process Filter -->
+                    <div>
+                        <label for="process-filter" class="block text-sm font-medium text-zinc-700 mb-1">Process</label>
+                        <select id="process-filter" name="process" class="block w-full rounded-md border-zinc-300 shadow-sm focus:border-blue-500 focus:ring-blue-500 sm:text-sm p-2">
+                            <option value="">All Processes</option>
+                            {% for process in processes %}
+                                <option value="{{ process.id }}" {% if request.GET.process == process.id|stringformat:"i" %}selected{% endif %}>{{ process.name }}</option>
+                            {% endfor %}
+                        </select>
+                    </div>
+
+                    <!-- Barcode Filter -->
+                    <div>
+                        <label for="barcode-filter" class="block text-sm font-medium text-zinc-700 mb-1">Barcode</label>
+                        <input type="text" id="barcode-filter" name="barcode" value="{{ request.GET.barcode|default:'' }}" class="block w-full rounded-md border-zinc-300 shadow-sm focus:border-blue-500 focus:ring-blue-500 sm:text-sm p-2" placeholder="Enter barcode">
+                    </div>
+                </div>
+
+                <!-- Date Range Filter -->
+                <div class="grid grid-cols-1 sm:grid-cols-2 gap-4 mt-4">
+                    <div>
+                        <label for="date-from" class="block text-sm font-medium text-zinc-700 mb-1">Date From</label>
+                        <input type="date" id="date-from" name="date_from" value="{{ request.GET.date_from|default:'' }}" class="block w-full rounded-md border-zinc-300 shadow-sm focus:border-blue-500 focus:ring-blue-500 sm:text-sm p-2">
+                    </div>
+                    <div>
+                        <label for="date-to" class="block text-sm font-medium text-zinc-700 mb-1">Date To</label>
+                        <input type="date" id="date-to" name="date_to" value="{{ request.GET.date_to|default:'' }}" class="block w-full rounded-md border-zinc-300 shadow-sm focus:border-blue-500 focus:ring-blue-500 sm:text-sm p-2">
+                    </div>
+                </div>
+
+                <div class="mt-4 flex justify-end space-x-2">
+                    <a href="{% url 'scale:weighing_record_list' %}" class="inline-flex items-center justify-center whitespace-nowrap rounded-md text-sm font-medium border border-zinc-300 bg-white text-zinc-700 hover:bg-zinc-50 h-10 px-4 py-2">
+                        Clear Filters
+                    </a>
+                    <button type="submit" class="inline-flex items-center justify-center whitespace-nowrap rounded-md text-sm font-medium bg-zinc-900 text-zinc-50 hover:bg-zinc-900/90 h-10 px-4 py-2">
+                        Apply Filters
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- Records Table -->
+    <div class="bg-white shadow rounded-lg overflow-hidden border border-zinc-200">
+        <div class="px-6 py-4 border-b border-zinc-200 flex justify-between items-center">
+            <h2 class="text-lg font-medium text-zinc-900">Weighing Records</h2>
+            <div class="text-sm text-zinc-500">{{ records.count }} record(s) found</div>
+        </div>
+        
+        {% if records %}
+        <div class="overflow-x-auto">
+            <table class="min-w-full divide-y divide-zinc-200">
+                <thead class="bg-zinc-50">
+                    <tr>
+                        <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-zinc-500 uppercase tracking-wider">
+                            <a href="?{{ request.GET.urlencode }}&sort={% if request.GET.sort == 'timestamp' %}-timestamp{% else %}timestamp{% endif %}" class="flex items-center">
+                                Timestamp
+                                {% if request.GET.sort == 'timestamp' %}<span class="ml-1">↓</span>{% elif request.GET.sort == '-timestamp' %}<span class="ml-1">↑</span>{% endif %}
+                            </a>
+                        </th>
+                        <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-zinc-500 uppercase tracking-wider">
+                            <a href="?{{ request.GET.urlencode }}&sort={% if request.GET.sort == 'scale' %}-scale{% else %}scale{% endif %}" class="flex items-center">
+                                Scale
+                                {% if request.GET.sort == 'scale' %}<span class="ml-1">↓</span>{% elif request.GET.sort == '-scale' %}<span class="ml-1">↑</span>{% endif %}
+                            </a>
+                        </th>
+                        <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-zinc-500 uppercase tracking-wider">
+                            <a href="?{{ request.GET.urlencode }}&sort={% if request.GET.sort == 'product' %}-product{% else %}product{% endif %}" class="flex items-center">
+                                Product
+                                {% if request.GET.sort == 'product' %}<span class="ml-1">↓</span>{% elif request.GET.sort == '-product' %}<span class="ml-1">↑</span>{% endif %}
+                            </a>
+                        </th>
+                        <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-zinc-500 uppercase tracking-wider">
+                            <a href="?{{ request.GET.urlencode }}&sort={% if request.GET.sort == 'barcode' %}-barcode{% else %}barcode{% endif %}" class="flex items-center">
+                                Barcode
+                                {% if request.GET.sort == 'barcode' %}<span class="ml-1">↓</span>{% elif request.GET.sort == '-barcode' %}<span class="ml-1">↑</span>{% endif %}
+                            </a>
+                        </th>
+                        <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-zinc-500 uppercase tracking-wider">
+                            <a href="?{{ request.GET.urlencode }}&sort={% if request.GET.sort == 'gross_weight' %}-gross_weight{% else %}gross_weight{% endif %}" class="flex items-center">
+                                Gross Weight
+                                {% if request.GET.sort == 'gross_weight' %}<span class="ml-1">↓</span>{% elif request.GET.sort == '-gross_weight' %}<span class="ml-1">↑</span>{% endif %}
+                            </a>
+                        </th>
+                        <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-zinc-500 uppercase tracking-wider">
+                            <a href="?{{ request.GET.urlencode }}&sort={% if request.GET.sort == 'tare_weight' %}-tare_weight{% else %}tare_weight{% endif %}" class="flex items-center">
+                                Tare Weight
+                                {% if request.GET.sort == 'tare_weight' %}<span class="ml-1">↓</span>{% elif request.GET.sort == '-tare_weight' %}<span class="ml-1">↑</span>{% endif %}
+                            </a>
+                        </th>
+                        <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-zinc-500 uppercase tracking-wider">
+                            <a href="?{{ request.GET.urlencode }}&sort={% if request.GET.sort == 'net_weight' %}-net_weight{% else %}net_weight{% endif %}" class="flex items-center">
+                                Net Weight
+                                {% if request.GET.sort == 'net_weight' %}<span class="ml-1">↓</span>{% elif request.GET.sort == '-net_weight' %}<span class="ml-1">↑</span>{% endif %}
+                            </a>
+                        </th>
+                        <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-zinc-500 uppercase tracking-wider">
+                            <a href="?{{ request.GET.urlencode }}&sort={% if request.GET.sort == 'process' %}-process{% else %}process{% endif %}" class="flex items-center">
+                                Process
+                                {% if request.GET.sort == 'process' %}<span class="ml-1">↓</span>{% elif request.GET.sort == '-process' %}<span class="ml-1">↑</span>{% endif %}
+                            </a>
+                        </th>
+                        <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-zinc-500 uppercase tracking-wider">
+                            Actions
+                        </th>
+                    </tr>
+                </thead>
+                <tbody class="bg-white divide-y divide-zinc-200">
+                    {% for record in records %}
+                    <tr class="hover:bg-zinc-50">
+                        <td class="px-6 py-4 whitespace-nowrap text-sm text-zinc-900">
+                            {{ record.timestamp|date:"Y-m-d H:i:s" }}
+                        </td>
+                        <td class="px-6 py-4 whitespace-nowrap text-sm text-zinc-900">
+                            {{ record.scale.name }}
+                        </td>
+                        <td class="px-6 py-4 whitespace-nowrap text-sm text-zinc-900">
+                            {{ record.product.name }}
+                        </td>
+                        <td class="px-6 py-4 whitespace-nowrap text-sm text-zinc-900">
+                            {{ record.barcode }}
+                        </td>
+                        <td class="px-6 py-4 whitespace-nowrap text-sm text-zinc-900">
+                            {{ record.gross_weight }} {{ record.unit_of_measure }}
+                        </td>
+                        <td class="px-6 py-4 whitespace-nowrap text-sm text-zinc-900">
+                            {{ record.tare_weight }} {{ record.unit_of_measure }}
+                        </td>
+                        <td class="px-6 py-4 whitespace-nowrap text-sm font-medium text-zinc-900">
+                            {{ record.net_weight }} {{ record.unit_of_measure }}
+                        </td>
+                        <td class="px-6 py-4 whitespace-nowrap text-sm text-zinc-900">
+                            {{ record.process.name }}
+                        </td>
+                        <td class="px-6 py-4 whitespace-nowrap text-sm text-zinc-500">
+                            <div class="flex space-x-2">
+                                <a href="{% url 'scale:weighing_record_detail' record.id %}" class="text-blue-600 hover:text-blue-800">
+                                    View
+                                </a>
+                                {% if record.print_count == 0 %}
+                                <a href="{% url 'scale:print_weighing_record' record.id %}" class="text-blue-600 hover:text-blue-800">
+                                    Print
+                                </a>
+                                {% else %}
+                                <a href="{% url 'scale:print_weighing_record' record.id %}" class="text-blue-600 hover:text-blue-800">
+                                    Reprint
+                                </a>
+                                {% endif %}
+                            </div>
+                        </td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+        
+        <!-- Pagination -->
+        {% if records.has_other_pages %}
+        <div class="px-6 py-4 border-t border-zinc-200">
+            <div class="flex items-center justify-between">
+                <div>
+                    <p class="text-sm text-zinc-700">
+                        Showing <span class="font-medium">{{ records.start_index }}</span> to 
+                        <span class="font-medium">{{ records.end_index }}</span> of 
+                        <span class="font-medium">{{ records.paginator.count }}</span> results
+                    </p>
+                </div>
+                <div>
+                    <nav class="isolate inline-flex -space-x-px rounded-md shadow-sm" aria-label="Pagination">
+                        {% if records.has_previous %}
+                            <a href="?{{ request.GET.urlencode }}&page={{ records.previous_page_number }}" class="relative inline-flex items-center rounded-l-md px-2 py-2 text-gray-400 ring-1 ring-inset ring-gray-300 hover:bg-gray-50 focus:z-20 focus:outline-offset-0">
+                                <span class="sr-only">Previous</span>
+                                &laquo;
+                            </a>
+                        {% else %}
+                            <span class="relative inline-flex items-center rounded-l-md px-2 py-2 text-gray-300 ring-1 ring-inset ring-gray-300 focus:outline-offset-0">
+                                <span class="sr-only">Previous</span>
+                                &laquo;
+                            </span>
+                        {% endif %}
+                        
+                        {% for i in records.paginator.page_range %}
+                            {% if records.number == i %}
+                                <span class="relative z-10 inline-flex items-center bg-blue-600 px-4 py-2 text-sm font-semibold text-white focus:z-20 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-blue-600">
+                                    {{ i }}
+                                </span>
+                            {% else %}
+                                <a href="?{{ request.GET.urlencode }}&page={{ i }}" class="relative inline-flex items-center px-4 py-2 text-sm font-semibold text-gray-900 ring-1 ring-inset ring-gray-300 hover:bg-gray-50 focus:z-20 focus:outline-offset-0">
+                                    {{ i }}
+                                </a>
+                            {% endif %}
+                        {% endfor %}
+                        
+                        {% if records.has_next %}
+                            <a href="?{{ request.GET.urlencode }}&page={{ records.next_page_number }}" class="relative inline-flex items-center rounded-r-md px-2 py-2 text-gray-400 ring-1 ring-inset ring-gray-300 hover:bg-gray-50 focus:z-20 focus:outline-offset-0">
+                                <span class="sr-only">Next</span>
+                                &raquo;
+                            </a>
+                        {% else %}
+                            <span class="relative inline-flex items-center rounded-r-md px-2 py-2 text-gray-300 ring-1 ring-inset ring-gray-300 focus:outline-offset-0">
+                                <span class="sr-only">Next</span>
+                                &raquo;
+                            </span>
+                        {% endif %}
+                    </nav>
+                </div>
+            </div>
+        </div>
+        {% endif %}
+        
+        {% else %}
+        <div class="px-6 py-12 text-center">
+            <svg xmlns="http://www.w3.org/2000/svg" class="mx-auto h-12 w-12 text-zinc-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+            </svg>
+            <h3 class="mt-2 text-sm font-medium text-zinc-900">No records found</h3>
+            <p class="mt-1 text-sm text-zinc-500">Try adjusting your filters or add a new weighing record.</p>
+            <div class="mt-6">
+                <a href="{% url 'scale:weighing_station' %}" class="inline-flex items-center justify-center whitespace-nowrap rounded-md text-sm font-medium bg-zinc-900 text-zinc-50 hover:bg-zinc-900/90 h-10 px-4 py-2">
+                    <svg xmlns="http://www.w3.org/2000/svg" class="-ml-0.5 mr-1.5 h-5 w-5" viewBox="0 0 20 20" fill="currentColor">
+                        <path fill-rule="evenodd" d="M10 3a1 1 0 011 1v5h5a1 1 0 110 2h-5v5a1 1 0 11-2 0v-5H4a1 1 0 110-2h5V4a1 1 0 011-1z" clip-rule="evenodd" />
+                    </svg>
+                    New Weighing Record
+                </a>
+            </div>
+        </div>
+        {% endif %}
+    </div>
+
+    <!-- Export Options -->
+    <div class="mt-6 flex justify-end">
+        <div class="dropdown inline-block relative">
+            <button class="inline-flex items-center justify-center whitespace-nowrap rounded-md text-sm font-medium bg-white text-zinc-700 border border-zinc-300 hover:bg-zinc-50 h-10 px-4 py-2">
+                <span>Export</span>
+                <svg class="ml-2 h-4 w-4" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor">
+                    <path fill-rule="evenodd" d="M5.293 7.293a1 1 0 011.414 0L10 10.586l3.293-3.293a1 1 0 111.414 1.414l-4 4a1 1 0 01-1.414 0l-4-4a1 1 0 010-1.414z" clip-rule="evenodd" />
+                </svg>
+            </button>
+            <div class="dropdown-menu absolute right-0 hidden z-10 mt-2 w-48 rounded-md bg-white shadow-lg ring-1 ring-black ring-opacity-5 focus:outline-none">
+                <div class="py-1">
+                    <a href="{% url 'scale:export_weighing_records' %}?format=csv&{{ request.GET.urlencode }}" class="block px-4 py-2 text-sm text-zinc-700 hover:bg-zinc-100">Export to CSV</a>
+                    <a href="{% url 'scale:export_weighing_records' %}?format=excel&{{ request.GET.urlencode }}" class="block px-4 py-2 text-sm text-zinc-700 hover:bg-zinc-100">Export to Excel</a>
+                    <a href="{% url 'scale:export_weighing_records' %}?format=pdf&{{ request.GET.urlencode }}" class="block px-4 py-2 text-sm text-zinc-700 hover:bg-zinc-100">Export to PDF</a>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_scripts %}
+<script>
+    document.addEventListener('DOMContentLoaded', function() {
+        // Toggle dropdown menu
+        const dropdownButton = document.querySelector('.dropdown button');
+        const dropdownMenu = document.querySelector('.dropdown-menu');
+        
+        if (dropdownButton && dropdownMenu) {
+            dropdownButton.addEventListener('click', function() {
+                dropdownMenu.classList.toggle('hidden');
+            });
+            
+            // Close the dropdown when clicking outside
+            document.addEventListener('click', function(event) {
+                if (!dropdownButton.contains(event.target) && !dropdownMenu.contains(event.target)) {
+                    dropdownMenu.classList.add('hidden');
+                }
+            });
+        }
+        
+        // Auto-submit form when filters change (except for text inputs)
+        const filterForm = document.getElementById('filter-form');
+        const selectFilters = filterForm.querySelectorAll('select');
+        const dateFilters = filterForm.querySelectorAll('input[type="date"]');
+        
+        selectFilters.forEach(select => {
+            select.addEventListener('change', function() {
+                filterForm.submit();
+            });
+        });
+        
+        dateFilters.forEach(date => {
+            date.addEventListener('change', function() {
+                filterForm.submit();
+            });
+        });
+        
+        // Add debounce for barcode filter
+        const barcodeFilter = document.getElementById('barcode-filter');
+        let debounceTimer;
+        
+        barcodeFilter.addEventListener('input', function() {
+            clearTimeout(debounceTimer);
+            debounceTimer = setTimeout(function() {
+                filterForm.submit();
+            }, 500); // 500ms delay
+        });
+    });
+</script>
+{% endblock %}

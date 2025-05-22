@@ -19,6 +19,14 @@ urlpatterns = [
     path('scales/<int:pk>/delete/', views.scale_delete, name='scale_delete'),
     path('scales/<int:scale_id>/connect/', views.connect_scale_view, name='connect_scale'),
     
+    # Weighing Record URLs
+    path('weighing-records/', views.weighing_record_list, name='weighing_record_list'),
+    path('weighing-records/<int:pk>/', views.weighing_record_detail, name='weighing_record_detail'),
+    path('weighing-records/<int:pk>/print/', views.print_weighing_record, name='print_weighing_record'),
+    path('weighing-records/<int:pk>/edit/', views.weighing_record_edit, name='weighing_record_edit'),
+    path('weighing-records/<int:pk>/delete/', views.weighing_record_delete, name='weighing_record_delete'),
+    path('weighing-records/export/', views.export_weighing_records, name='export_weighing_records'),
+    
     # Weighing Process URLs
     path('weighing-processes/', views.weighing_process_list, name='weighing_process_list'),
     path('weighing-processes/create/', views.weighing_process_create, name='weighing_process_create'),
