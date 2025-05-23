@@ -1,5 +1,5 @@
 from django.contrib import admin
-from .models import Scale, WeighingProcess, Product, DeliveryNote, WeighingRecord
+from .models import Scale, WeighingProcess, Product, DeliveryNote, WeighingRecord, ErpSystem, CompanySettings
 
 
 class ScaleAdmin(admin.ModelAdmin):
@@ -48,3 +48,19 @@ class WeighingRecordAdmin(admin.ModelAdmin):
     list_per_page = 20
 
 admin.site.register(WeighingRecord, WeighingRecordAdmin)
+
+
+class ErpSystemAdmin(admin.ModelAdmin):
+    list_display = ('name', 'created_at', 'updated_at')
+    search_fields = ('name',)
+    list_per_page = 20
+
+admin.site.register(ErpSystem, ErpSystemAdmin)
+
+class CompanySettingsAdmin(admin.ModelAdmin):
+    list_display = ('company_name', 'erp_system', 'is_active', 'created_at', 'updated_at')
+    list_filter = ('is_active',)
+    search_fields = ('company_name', 'erp_system__name')
+    list_per_page = 20
+
+admin.site.register(CompanySettings, CompanySettingsAdmin)

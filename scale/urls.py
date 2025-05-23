@@ -50,4 +50,8 @@ urlpatterns = [
     
     # Weighing Station URLs
     path('weighing-station/', views.weighing_station, name='weighing_station'),
+    path('scales/<int:scale_id>/get-weight/', views.get_weight, name='get_weight'),
+    
+    # Company Settings URL
+    path('company-settings/', views.company_settings, name='company_settings'),
 ] 

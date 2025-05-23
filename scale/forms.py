@@ -1,5 +1,5 @@
 from django import forms
-from .models import Scale, WeighingProcess, Product, DeliveryNote
+from .models import Scale, WeighingProcess, Product, DeliveryNote, CompanySettings
 import serial.tools.list_ports
 
 class ScaleForm(forms.ModelForm):
@@ -162,6 +162,44 @@ class DeliveryNoteForm(forms.ModelForm):
 
 
     }
+    
+    
+class CompanySettingsForm(forms.ModelForm):
+
+    class Meta:
+        model = CompanySettings
+        fields = [
+            'company_name',
+            'erp_system',
+            'api_key',
+            'erp_username',
+            'erp_password',
+            'api_url',
+            'is_active'
+        ]
+        widgets = {
+            'company_name': forms.TextInput(attrs={
+                'class': 'block w-full rounded-md border-zinc-300 shadow-sm focus:border-blue-500 focus:ring-blue-500 sm:text-sm p-2'
+            }),
+            'erp_system': forms.Select(attrs={
+                'class': 'block w-full rounded-md border-zinc-300 shadow-sm focus:border-blue-500 focus:ring-blue-500 sm:text-sm p-2'
+            }),
+            'api_key': forms.TextInput(attrs={
+                'class': 'block w-full rounded-md border-zinc-300 shadow-sm focus:border-blue-500 focus:ring-blue-500 sm:text-sm p-2'
+            }),
+            'erp_username': forms.TextInput(attrs={
+                'class': 'block w-full rounded-md border-zinc-300 shadow-sm focus:border-blue-500 focus:ring-blue-500 sm:text-sm p-2'
+            }),
+            'erp_password': forms.PasswordInput(attrs={
+                'class': 'block w-full rounded-md border-zinc-300 shadow-sm focus:border-blue-500 focus:ring-blue-500 sm:text-sm p-2'
+            }),
+            'api_url': forms.TextInput(attrs={
+                'class': 'block w-full rounded-md border-zinc-300 shadow-sm focus:border-blue-500 focus:ring-blue-500 sm:text-sm p-2'
+            }),
+            'is_active': forms.CheckboxInput(attrs={
+                'class': 'h-4 w-4 text-blue-600 border-zinc-300 rounded focus:ring-blue-500'
+            }),
+        }
     
     
     

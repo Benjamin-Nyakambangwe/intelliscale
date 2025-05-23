@@ -22,7 +22,7 @@ class WeighingProcess(models.Model):
     description = models.TextField(blank=True)
     custom_fields_schema = models.JSONField(default=list, blank=True)
     erp_target_model = models.CharField(max_length=100, blank=True)
-    is_active = models.BooleanField(default=True)
+    is_active = models.BooleanField(default=False)
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
     
@@ -34,7 +34,7 @@ class Product(models.Model):
     erp_product_id = models.CharField(max_length=100, blank=True)
     name = models.CharField(max_length=100)
     description = models.TextField(blank=True)
-    is_active = models.BooleanField(default=True)
+    is_active = models.BooleanField(default=False)
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
     
@@ -84,4 +84,26 @@ class DeliveryNote(models.Model):
     def __str__(self):
         return f"{self.delivery_note_number}"
     
+
+class ErpSystem(models.Model):
+    name = models.CharField(max_length=100)
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
     
+    def __str__(self):
+        return self.name
+    
+    
+class CompanySettings(models.Model):
+    company_name = models.CharField(max_length=100)
+    erp_system = models.ForeignKey(ErpSystem, on_delete=models.CASCADE)
+    api_key = models.CharField(max_length=100, blank=True, null=True)
+    erp_username = models.CharField(max_length=100, blank=True, null=True)
+    erp_password = models.CharField(max_length=100, blank=True, null=True)
+    api_url = models.CharField(max_length=100, blank=True, null=True)
+    is_active = models.BooleanField(default=True)
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+    
+    def __str__(self):
+        return f"{self.company_name} - {self.erp_system}"

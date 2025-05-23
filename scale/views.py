@@ -3,15 +3,16 @@ from django.contrib.auth.decorators import login_required, user_passes_test
 from django.contrib import messages
 from django.http import HttpResponseForbidden, JsonResponse
 from users.views import is_admin 
-from .models import Scale, WeighingProcess, Product, DeliveryNote, WeighingRecord
-from .forms import ScaleForm, WeighingProcessForm, ProductForm, DeliveryNoteForm
+from .models import Scale, WeighingProcess, Product, DeliveryNote, WeighingRecord, CompanySettings
+from .forms import ScaleForm, WeighingProcessForm, ProductForm, DeliveryNoteForm, CompanySettingsForm
 import serial
 import serial.tools.list_ports
 from django.utils import timezone
 import json
 from decimal import Decimal
 from django.core.paginator import Paginator
-
+import requests
+import random
 
 # Scale Management Views
 @login_required
@@ -182,7 +183,71 @@ def connect_scale(scale):
 
 
 
-
+@login_required
+@user_passes_test(is_admin)
+def get_weight(request, scale_id):
+    if request.method == 'POST':
+        print(f"Getting weight for scale {scale_id}")
+        
+        weight = random.randint(50, 125)
+        return JsonResponse({
+            'success': True,
+            'weight': weight
+        })
+        
+        # try:
+        #     scale = get_object_or_404(Scale, pk=scale_id)
+            
+        #     # Check if scale is connected
+        #     if scale.last_connection_status != "connected":
+        #         return JsonResponse({
+        #             'success': False,
+        #             'message': 'Scale is not connected. Please connect the scale first.'
+        #         })
+            
+        #     # Try to read from the scale
+        #     ser = None
+        #     try:
+        #         ser = serial.Serial(scale.com_port, 9600, timeout=2)
+        #         if ser.is_open:
+        #             # Send command to get weight (this may vary by scale model)
+        #             ser.write(b"\r\n")  # Some scales need a CR/LF to trigger reading
+        #             # Read response
+        #             line = ser.readline()
+        #             weight_str = line.decode(errors='ignore').strip()
+                    
+        #             # Parse weight (this parsing logic may need to be adjusted based on your scale's output format)
+        #             try:
+        #                 weight = float(weight_str)
+        #                 return JsonResponse({
+        #                     'success': True,
+        #                     'weight': weight
+        #                 })
+        #             except ValueError:
+        #                 return JsonResponse({
+        #                     'success': False,
+        #                     'message': f'Could not parse weight value from scale: {weight_str}'
+        #                 })
+                        
+        #     except serial.SerialException as e:
+        #         return JsonResponse({
+        #             'success': False,
+        #             'message': f'Error reading from scale: {str(e)}'
+        #         })
+        #     finally:
+        #         if ser and ser.is_open:
+        #             ser.close()
+                    
+        # except Exception as e:
+        #     return JsonResponse({
+        #         'success': False,
+        #         'message': str(e)
+        #     })
+    
+    # return JsonResponse({
+    #     'success': False,
+    #     'message': 'Only POST requests are allowed.'
+    # })
 
 
 
@@ -320,6 +385,10 @@ def weighing_station(request):
                 barcode=barcode
             )
             
+            # Send barcode, mass and scale id to erp system (if record created successfully)
+            if weighing_record:
+                send_to_erp(barcode, net_weight, scale_id, weighing_record.id)
+            
             print_after_save = request.POST.get('print_after_save') == 'true'
             
             if print_after_save:
@@ -351,6 +420,64 @@ def weighing_station(request):
     }
     
     return render(request, 'scale/weighing_station.html', context)
+
+
+def send_to_erp(barcode, net_weight, scale_id, weighing_record_id):
+    # TODO: Implement actual sending to erp system
+    
+    # Get company settings
+    company_settings = CompanySettings.objects.get(id=1)
+    
+    if company_settings.erp_system == 'odoo':
+        # Send to odoo
+        pass
+    
+        print("Sending to erp system")
+        print(f"Sending barcode {barcode}, net weight {net_weight}, and scale id {scale_id} to erp system")
+        try:
+
+            url = "http://localhost:8069/receiving/scaleserver/manual_scale/" + str(round(float(net_weight))) + "/" + barcode
+
+            payload = {}
+            headers = {
+                # TODO: Add session id FROM COOKIE
+                "cookie": "session_id=eM3Yp7DVQfc44-4RZhLX7fhwXHi0MFeb6AjxzyM5_s53j7fsmiWBZZ6YoNnq3VkPn6qwqIdau5er_L1vUe2y",
+                "Content-Type": "application/json",
+                "User-Agent": "insomnia/11.1.0",
+            }
+
+            response = requests.request("POST", url, json=payload, headers=headers)
+            
+            print(response.status_code)
+
+            print(response.text)
+            
+            if response.status_code == 200:
+                # Update weighing record with erp response
+                weighing_record = WeighingRecord.objects.get(id=weighing_record_id)
+                weighing_record.is_synced = True
+                weighing_record.last_sync_attempt = timezone.now()
+                weighing_record.save()
+                return True
+            else:
+                weighing_record = WeighingRecord.objects.get(id=weighing_record_id)
+                weighing_record.is_synced = False
+                weighing_record.last_sync_attempt = timezone.now()
+                weighing_record.sync_error_message = response.text
+                weighing_record.save()
+                return True
+        except Exception as e:
+            print(f"Error sending to erp: {str(e)}")
+            weighing_record = WeighingRecord.objects.get(id=weighing_record_id)
+            weighing_record.is_synced = False
+            weighing_record.last_sync_attempt = timezone.now()
+            weighing_record.sync_error_message = str(e)
+            weighing_record.save()
+            return False
+    else:
+        # TODO: Add other erp systems here
+        print('ONLY ODOO IS SUPPORTED FOR NOW')
+        return False
 
 
 #################################################################################################
@@ -824,3 +951,23 @@ def export_records_to_pdf(records):
     response.write(pdf)
     
     return response
+
+@login_required
+@user_passes_test(is_admin)
+def company_settings(request):
+    # Get the first company settings record or None
+    company_settings = CompanySettings.objects.first()
+    
+    if request.method == 'POST':
+        form = CompanySettingsForm(request.POST, instance=company_settings)
+        if form.is_valid():
+            form.save()
+            messages.success(request, 'Company settings saved successfully.')
+            return redirect('scale:company_settings')
+    else:
+        form = CompanySettingsForm(instance=company_settings)
+    
+    return render(request, 'scale/company_settings.html', {
+        'form': form,
+        'company_settings': company_settings
+    })

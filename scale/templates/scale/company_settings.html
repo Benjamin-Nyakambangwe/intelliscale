@@ -1,0 +1,140 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Company Settings</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+</head>
+<body class="bg-gray-100">
+    <div class="max-w-7xl mx-auto py-6 sm:px-6 lg:px-8">
+        <div class="px-4 py-6 sm:px-0">
+            <div class="bg-white shadow overflow-hidden sm:rounded-lg">
+                <div class="px-4 py-5 sm:px-6">
+                    <h3 class="text-lg leading-6 font-medium text-gray-900">
+                        {% if company_settings %}
+                            Edit Company Settings
+                        {% else %}
+                            Create Company Settings
+                        {% endif %}
+                    </h3>
+                    <p class="mt-1 max-w-2xl text-sm text-gray-500">
+                        {% if company_settings %}
+                            Update your company's ERP integration settings.
+                        {% else %}
+                            Set up your company's ERP integration settings.
+                        {% endif %}
+                    </p>
+                </div>
+                
+                <div class="border-t border-gray-200 px-4 py-5 sm:p-6">
+                    <form method="post" class="space-y-6">
+                        {% csrf_token %}
+                        
+                        {% if messages %}
+                            <div class="rounded-md bg-yellow-50 p-4 mb-4">
+                                <div class="flex">
+                                    <div class="ml-3">
+                                        {% for message in messages %}
+                                            <p class="text-sm font-medium text-yellow-800">{{ message }}</p>
+                                        {% endfor %}
+                                    </div>
+                                </div>
+                            </div>
+                        {% endif %}
+                        
+                        <div class="grid grid-cols-1 gap-6">
+                            <!-- Company Name -->
+                            <div>
+                                <label for="{{ form.company_name.id_for_label }}" class="block text-sm font-medium text-gray-700">Company Name</label>
+                                <div class="mt-1">
+                                    {{ form.company_name }}
+                                </div>
+                                {% if form.company_name.errors %}
+                                    <p class="mt-2 text-sm text-red-600">{{ form.company_name.errors }}</p>
+                                {% endif %}
+                            </div>
+
+                            <!-- ERP System -->
+                            <div>
+                                <label for="{{ form.erp_system.id_for_label }}" class="block text-sm font-medium text-gray-700">ERP System</label>
+                                <div class="mt-1">
+                                    {{ form.erp_system }}
+                                </div>
+                                {% if form.erp_system.errors %}
+                                    <p class="mt-2 text-sm text-red-600">{{ form.erp_system.errors }}</p>
+                                {% endif %}
+                            </div>
+
+                            <!-- API Key -->
+                            <div>
+                                <label for="{{ form.api_key.id_for_label }}" class="block text-sm font-medium text-gray-700">API Key</label>
+                                <div class="mt-1">
+                                    {{ form.api_key }}
+                                </div>
+                                {% if form.api_key.errors %}
+                                    <p class="mt-2 text-sm text-red-600">{{ form.api_key.errors }}</p>
+                                {% endif %}
+                            </div>
+
+                            <!-- API URL -->
+                            <div>
+                                <label for="{{ form.api_url.id_for_label }}" class="block text-sm font-medium text-gray-700">API URL</label>
+                                <div class="mt-1">
+                                    {{ form.api_url }}
+                                </div>
+                                {% if form.api_url.errors %}
+                                    <p class="mt-2 text-sm text-red-600">{{ form.api_url.errors }}</p>
+                                {% endif %}
+                            </div>
+
+                            <!-- ERP Username -->
+                            <div>
+                                <label for="{{ form.erp_username.id_for_label }}" class="block text-sm font-medium text-gray-700">ERP Username</label>
+                                <div class="mt-1">
+                                    {{ form.erp_username }}
+                                </div>
+                                {% if form.erp_username.errors %}
+                                    <p class="mt-2 text-sm text-red-600">{{ form.erp_username.errors }}</p>
+                                {% endif %}
+                            </div>
+
+                            <!-- ERP Password -->
+                            <div>
+                                <label for="{{ form.erp_password.id_for_label }}" class="block text-sm font-medium text-gray-700">ERP Password</label>
+                                <div class="mt-1">
+                                    {{ form.erp_password }}
+                                </div>
+                                {% if form.erp_password.errors %}
+                                    <p class="mt-2 text-sm text-red-600">{{ form.erp_password.errors }}</p>
+                                {% endif %}
+                            </div>
+
+                            <!-- Is Active -->
+                            <div class="flex items-center">
+                                {{ form.is_active }}
+                                <label for="{{ form.is_active.id_for_label }}" class="ml-2 block text-sm text-gray-900">Active</label>
+                                {% if form.is_active.errors %}
+                                    <p class="mt-2 text-sm text-red-600">{{ form.is_active.errors }}</p>
+                                {% endif %}
+                            </div>
+                        </div>
+
+                        <div class="pt-5">
+                            <div class="flex justify-end">
+                                <button type="submit" class="ml-3 inline-flex justify-center py-2 px-4 border border-transparent shadow-sm text-sm font-medium rounded-md text-white bg-blue-600 hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500">
+                                    {% if company_settings %}
+                                        Update Settings
+                                    {% else %}
+                                        Create Settings
+                                    {% endif %}
+                                </button>
+                            </div>
+                        </div>
+                    </form>
+                </div>
+            </div>
+        </div>
+    </div>
+</body>
+</html>
