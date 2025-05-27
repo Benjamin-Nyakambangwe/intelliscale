@@ -13,6 +13,7 @@ from decimal import Decimal
 from django.core.paginator import Paginator
 import requests
 import random
+import xmlrpc.client
 
 # Scale Management Views
 @login_required
@@ -182,67 +183,69 @@ def connect_scale(scale):
     return False, f"Could not connect to scale {scale.name}. No suitable COM port found or scale not responsive."
 
 
-
+###################################################################################################
+#  Get Weight
 @login_required
 @user_passes_test(is_admin)
 def get_weight(request, scale_id):
     if request.method == 'POST':
         print(f"Getting weight for scale {scale_id}")
         
-        weight = random.randint(50, 125)
+        weight = random.randint(50, 100)
         return JsonResponse({
             'success': True,
             'weight': weight
         })
         
-        # try:
-        #     scale = get_object_or_404(Scale, pk=scale_id)
+    #     try:
+    #         scale = get_object_or_404(Scale, pk=scale_id)
             
-        #     # Check if scale is connected
-        #     if scale.last_connection_status != "connected":
-        #         return JsonResponse({
-        #             'success': False,
-        #             'message': 'Scale is not connected. Please connect the scale first.'
-        #         })
+    #         # Check if scale is connected
+    #         if scale.last_connection_status != "connected":
+    #             return JsonResponse({
+    #                 'success': False,
+    #                 'message': 'Scale is not connected. Please connect the scale first.'
+    #             })
             
-        #     # Try to read from the scale
-        #     ser = None
-        #     try:
-        #         ser = serial.Serial(scale.com_port, 9600, timeout=2)
-        #         if ser.is_open:
-        #             # Send command to get weight (this may vary by scale model)
-        #             ser.write(b"\r\n")  # Some scales need a CR/LF to trigger reading
-        #             # Read response
-        #             line = ser.readline()
-        #             weight_str = line.decode(errors='ignore').strip()
+    #         # Try to read from the scale
+    #         ser = None
+    #         try:
+    #             ser = serial.Serial(scale.com_port, 9600, timeout=2)
+    #             if ser.is_open:
+    #                 # Send command to get weight (this may vary by scale model)
+    #                 ser.write(b"\r\n")  # Some scales need a CR/LF to trigger reading
+    #                 # Read response
+    #                 line = ser.readline()
+    #                 # weight_str = line.decode(errors='ignore').strip()
+    #                 weight_str = line.decode('utf-8')[7: 14].strip()
                     
-        #             # Parse weight (this parsing logic may need to be adjusted based on your scale's output format)
-        #             try:
-        #                 weight = float(weight_str)
-        #                 return JsonResponse({
-        #                     'success': True,
-        #                     'weight': weight
-        #                 })
-        #             except ValueError:
-        #                 return JsonResponse({
-        #                     'success': False,
-        #                     'message': f'Could not parse weight value from scale: {weight_str}'
-        #                 })
+    #                 # Parse weight (this parsing logic may need to be adjusted based on your scale's output format)
+    #                 try:
+    #                     weight = float(weight_str)
+    #                     return JsonResponse({
+    #                         'success': True,
+    #                         'weight': weight
+    #                     })
+    #                 except ValueError:
+    #                     return JsonResponse({
+    #                         'success': False,
+    #                         'message': f'Could not parse weight value from scale: {weight_str}'
+    #                     })
                         
-        #     except serial.SerialException as e:
-        #         return JsonResponse({
-        #             'success': False,
-        #             'message': f'Error reading from scale: {str(e)}'
-        #         })
-        #     finally:
-        #         if ser and ser.is_open:
-        #             ser.close()
+    #         except serial.SerialException as e:
+    #             return JsonResponse({
+    #                 'success': False,
+    #                 'message': f'Error reading from scale: {str(e)}'
+    #             })
+    #         finally:
+    #             if ser and ser.is_open:
+    #                 ser.close()
                     
-        # except Exception as e:
-        #     return JsonResponse({
-        #         'success': False,
-        #         'message': str(e)
-        #     })
+    #     except Exception as e:
+    #         return JsonResponse({
+    #             'success': False,
+    #             'message': str(e)
+    #         })
     
     # return JsonResponse({
     #     'success': False,
@@ -312,7 +315,7 @@ def weighing_process_delete(request, pk):
 
 # Weighing Station Views
 @login_required
-@user_passes_test(is_admin)
+# @user_passes_test(is_admin)
 def weighing_station(request):
     scales = Scale.objects.filter(is_active=True).order_by('name')
     products = Product.objects.filter(is_active=True).order_by('name')
@@ -387,7 +390,7 @@ def weighing_station(request):
             
             # Send barcode, mass and scale id to erp system (if record created successfully)
             if weighing_record:
-                send_to_erp(barcode, net_weight, scale_id, weighing_record.id)
+                send_to_erp(barcode, net_weight, scale_id, weighing_record.id, request)
             
             print_after_save = request.POST.get('print_after_save') == 'true'
             
@@ -422,26 +425,92 @@ def weighing_station(request):
     return render(request, 'scale/weighing_station.html', context)
 
 
-def send_to_erp(barcode, net_weight, scale_id, weighing_record_id):
+def send_to_erp(barcode, net_weight, scale_id, weighing_record_id, request):
     # TODO: Implement actual sending to erp system
     
     # Get company settings
-    company_settings = CompanySettings.objects.get(id=1)
+    company_settings = CompanySettings.objects.get(id=2)
+    print('Company Settings: ', company_settings)
+    print('Company Settings ERP System: ', company_settings.erp_system.name)
+    print('Password: ', company_settings.erp_password)
+    print('Username: ', company_settings.erp_username)
+    print('API URL: ', company_settings.api_url)
     
-    if company_settings.erp_system == 'odoo':
+    # Check for a session id in the browser cookies
+    session_id = request.COOKIES.get('session_id')
+    print('Session ID from cookies: ', session_id)
+    print('Session ID: ', session_id)
+    if not session_id:
+        url = f"{company_settings.api_url}/web/session/authenticate"
+
+        payload = {
+            "jsonrpc": "2.0",
+            "params": {
+                "db": "ptf_odoo18",
+                "login": company_settings.erp_username,
+                "password": company_settings.erp_password
+            }
+        }
+        headers = {
+            "Content-Type": "application/json",
+            "User-Agent": "insomnia/11.0.2"
+        }
+
+        # If we have an existing session_id, use it
+        # if session_id:
+        #     headers["cookie"] = f"session_id={session_id}"
+
+        # Debug logging
+        print("Making authentication request to:", url)
+        print("Headers:", headers)
+        print("Payload:", payload)
+
+        response = requests.request("POST", url, json=payload, headers=headers)
+        
+        # Debug response
+        print("Response status:", response.status_code)
+        print("Response headers:", dict(response.headers))
+        print("Response cookies:", dict(response.cookies))
+        print("Response body:", response.text)
+        
+        if response.status_code == 200:
+            result = response.json()
+            if 'result' in result:
+                # Get new session_id from cookies
+                new_session_id = response.cookies.get('session_id')
+                print('New Session ID: ', new_session_id)
+                # response.set_cookie('erp_session_id', new_session_id)
+                session_id = new_session_id
+                
+                # if new_session_id:
+                #     return new_session_id
+                # If no new session_id in cookies but request succeeded, return the existing one
+                # return session_id
+            elif 'error' in result:
+                print('Authentication error:', result['error'].get('data', {}).get('message', 'Unknown error'))
+                # return None
+        
+        print('Failed to authenticate:', response.text)
+        # return None
+    
+    
+    if company_settings.erp_system.name == 'Odoo':
         # Send to odoo
         pass
     
         print("Sending to erp system")
         print(f"Sending barcode {barcode}, net weight {net_weight}, and scale id {scale_id} to erp system")
+        print('Session ID: ', session_id)
+        # session_id = request.COOKIES.get('erp_session_id')
+        # print('Session ID: ', session_id)
         try:
 
-            url = "http://localhost:8069/receiving/scaleserver/manual_scale/" + str(round(float(net_weight))) + "/" + barcode
+            url = company_settings.api_url + "/receiving/scaleserver/manual_scale/" + str(round(float(net_weight))) + "/" + barcode
 
             payload = {}
             headers = {
                 # TODO: Add session id FROM COOKIE
-                "cookie": "session_id=eM3Yp7DVQfc44-4RZhLX7fhwXHi0MFeb6AjxzyM5_s53j7fsmiWBZZ6YoNnq3VkPn6qwqIdau5er_L1vUe2y",
+                "cookie": f"session_id={session_id}",
                 "Content-Type": "application/json",
                 "User-Agent": "insomnia/11.1.0",
             }
@@ -746,6 +815,9 @@ def weighing_record_delete(request, pk):
     # If not POST, redirect to detail page
     return redirect('scale:weighing_record_detail', pk=pk)
 
+
+#################################################################################################
+# Export Weighing Records
 @login_required
 @user_passes_test(is_admin)
 def export_weighing_records(request):
@@ -952,6 +1024,8 @@ def export_records_to_pdf(records):
     
     return response
 
+###################################################################################################
+#  Company Settings
 @login_required
 @user_passes_test(is_admin)
 def company_settings(request):

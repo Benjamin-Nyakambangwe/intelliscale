@@ -161,7 +161,7 @@
                         </div>
                     </div>
 
-                    <div id="product-details" class="hidden border border-zinc-200 rounded-md p-4 bg-zinc-50">
+                    {% comment %} <div id="product-details" class="hidden border border-zinc-200 rounded-md p-4 bg-zinc-50">
                         <div class="space-y-2">
                             <div>
                                 <span class="text-sm text-zinc-500">Product Name:</span>
@@ -176,7 +176,7 @@
                                 <span id="product-description" class="ml-2 text-sm font-medium text-zinc-900">-</span>
                             </div>
                         </div>
-                    </div>
+                    </div> {% endcomment %}
                 </div>
             </div> 
         </div>
@@ -215,7 +215,7 @@
                 <div class="px-3 py-2 border-b border-zinc-200">
                     <h2 class="text-lg font-medium text-zinc-900">PRODUCT</h2>
                 </div>
-                <div class="p-3">
+                {% comment %} <div class="p-3">
                     <div>
                         <label class="block text-sm font-medium text-zinc-700 mb-1">Product</label>
                         <div class="flex items-center space-x-1">
@@ -233,7 +233,7 @@
                             </button>
                         </div>
                     </div>
-                </div> 
+                </div>  {% endcomment %}
                 <div class="p-3">
                     {% if products|length == 1 %}
                         <div>
@@ -254,7 +254,7 @@
                 <div class="px-3 py-2 border-b border-zinc-200">
                     <h2 class="text-lg font-medium text-zinc-900">WEIGHING PROCESS</h2>
                 </div>
-                <div class="p-3">
+                <div class="p-3 hidden">
                     <div>
                         <label for="process-select" class="block text-sm font-medium text-zinc-700 mb-1">Weighing Process</label>
                         <select id="process-select" name="process_id" class="block w-full rounded-md border-zinc-300 shadow-sm focus:border-blue-500 focus:ring-blue-500 sm:text-sm p-1">
@@ -270,7 +270,7 @@
                         <div>
                             <label class="block text-sm font-medium text-zinc-700 mb-1">Weighing Process</label>
                             <div class="py-2 px-3 bg-zinc-100 rounded text-zinc-900">{{ processes.0.name }}</div>
-                            <input type="hidden" name="process_id" value="{{ processes.0.id }}">
+                            <input type="hidden" id="process-id-input" name="process_id" value="{{ processes.0.id }}">
                         </div>
                     {% elif processes|length == 0 %}
                         <div class="text-red-600 text-sm">No active weighing process available. Please activate a process.</div>
@@ -340,7 +340,7 @@
             </div>
             
             <!-- Recent Records Card -->
-            <div class="bg-white shadow rounded-lg overflow-hidden border border-zinc-200">
+            {% comment %} <div class="bg-white shadow rounded-lg overflow-hidden border border-zinc-200">
                 <div class="px-6 py-5 border-b border-zinc-200">
                     <h2 class="text-lg font-medium text-zinc-900">RECENT RECORDS</h2>
                 </div>
@@ -349,7 +349,7 @@
                         Last 3 records will appear here
                     </div>
                 </div>
-            </div>
+            </div> {% endcomment %}
         </div>
     </div>
 </form>
@@ -368,10 +368,10 @@
         // You can add more logic here to fetch and display scale information
     }
     // Move updateProductInfo function to global scope so it's accessible from HTML
-    function updateProductInfo(productId) {
-        console.log('Updating product info for productId:', productId);
-        localStorage.setItem('lastProductId', productId);
-    }
+    //function updateProductInfo(productId) {
+    //    console.log('Updating product info for productId:', productId);
+    //    localStorage.setItem('lastProductId', productId);
+    //}
     // Move updateProcessInfo function to global scope so it's accessible from HTML
     function updateProcessInfo(processId) {
         console.log('Updating process info for processId:', processId);
@@ -388,12 +388,15 @@
         const scaleInfo = document.getElementById('scale-info');
         
         // Toggle product details visibility when a product is selected
-        const productSelect = document.getElementById('product-select');
-        const productDetails = document.getElementById('product-details');
+        // const productSelect = document.getElementById('product-select');
+        // const productDetails = document.getElementById('product-details');
         
         // Toggle custom fields visibility when a process is selected
         const processSelect = document.getElementById('process-select');
         const customFieldsContainer = document.getElementById('custom-fields-container');
+
+        const activeProcessId = document.getElementById('process-id-input').value;
+        console.log('Active process ID:', activeProcessId);
         
         // Parse process custom fields data from the template
         const processCustomFields = JSON.parse('{{ process_custom_fields|escapejs }}');
@@ -405,11 +408,11 @@
             scaleInfo.classList.remove('hidden');
         }
         
-        if (localStorage.getItem('lastProductId')) {
-            $('#product-select').val(localStorage.getItem('lastProductId'));
-            updateProductInfo(localStorage.getItem('lastProductId'));
-            productDetails.classList.remove('hidden');
-        }
+       // if (localStorage.getItem('lastProductId')) {
+       //     $('#product-select').val(localStorage.getItem('lastProductId'));
+       //     updateProductInfo(localStorage.getItem('lastProductId'));
+       //     productDetails.classList.remove('hidden');
+       // }
         
         if (localStorage.getItem('lastProcessId')) {
             const savedProcessId = localStorage.getItem('lastProcessId');
@@ -547,15 +550,18 @@
         });
         
         // Toggle product details visibility when a product is selected
-        productSelect.addEventListener('change', function() {
-            productDetails.classList.toggle('hidden', !this.value);
-            updateProductInfo(this.value);
-            // In a real implementation, you would fetch product details here
-        });
+        // productSelect.addEventListener('change', function() {
+        //     productDetails.classList.toggle('hidden', !this.value);
+        //     updateProductInfo(this.value);
+        //     // In a real implementation, you would fetch product details here
+        // });
         
-        // Toggle custom fields visibility when a process is selected
-        processSelect.addEventListener('change', function() {
-            const processId = this.value;
+        // Toggle custom fields visibility when a process is available
+//        processSelect.addEventListener('change', function() {
+
+        if (activeProcessId) {
+            console.log('Active process ID:', activeProcessId);
+            const processId = activeProcessId;
             customFieldsContainer.classList.toggle('hidden', !processId);
             
             if (processId) {
@@ -567,7 +573,7 @@
                 customFieldsContainer.innerHTML = '';
             }
             updateProcessInfo(processId);
-        });
+        }
         
         // Function to render custom fields
         function renderCustomFields(fieldsSchema) {
@@ -911,8 +917,8 @@
             // Reset selections
             scaleSelect.selectedIndex = 0;
             scaleInfo.classList.add('hidden');
-            productSelect.selectedIndex = 0;
-            productDetails.classList.add('hidden');
+            // productSelect.selectedIndex = 0;
+            // productDetails.classList.add('hidden');
             processSelect.selectedIndex = 0;
             customFieldsContainer.classList.add('hidden');
             
@@ -942,7 +948,7 @@
         // Form validation before submission
         document.getElementById('weighing-form').addEventListener('submit', function(event) {
             const scaleId = scaleSelect.value;
-            const productId = productSelect.value;
+            // const productId = productSelect.value;
             const processId = processSelect.value;
             const grossWeight = grossWeightInput.value;
             const tareWeight = tareWeightInput.value;
@@ -954,11 +960,11 @@
                 return;
             }
             
-            if (!productId) {
-                alert('Please select a product');
-                event.preventDefault();
-                return;
-            }
+            //if (!productId) {
+            //    alert('Please select a product');
+            //    event.preventDefault();
+            //    return;
+            //}
             
             if (!processId) {
                 alert('Please select a weighing process');
@@ -1031,7 +1037,7 @@
             
             // Store form data before submission to restore after redirect
             localStorage.setItem('lastScaleId', scaleId);
-            localStorage.setItem('lastProductId', productId);
+            // localStorage.setItem('lastProductId', productId);
             localStorage.setItem('lastProcessId', processId);
             
             // Set a flag indicating we've just submitted the form successfully
@@ -1077,7 +1083,7 @@
                 
                 // Restore previously selected values
                 const lastScaleId = localStorage.getItem('lastScaleId');
-                const lastProductId = localStorage.getItem('lastProductId');
+                //const lastProductId = localStorage.getItem('lastProductId');
                 const lastProcessId = localStorage.getItem('lastProcessId');
                 
                 console.log('Restoring values:', {lastScaleId, lastProductId, lastProcessId});
@@ -1088,11 +1094,11 @@
                     scaleInfo.classList.remove('hidden');
                 }
                 
-                if (lastProductId) {
-                    productSelect.value = lastProductId;
+               // if (lastProductId) {
+                    // productSelect.value = lastProductId;
                     // Manually trigger product details display update
-                    productDetails.classList.remove('hidden');
-                }
+                    // productDetails.classList.remove('hidden');
+                //}
                 
                 if (lastProcessId) {
                     processSelect.value = lastProcessId;
