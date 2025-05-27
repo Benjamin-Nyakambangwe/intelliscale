@@ -18,6 +18,13 @@ class Scale(models.Model):
     
     
 class WeighingProcess(models.Model):
+    WEIGHT_ROUNDING_CHOICES = [
+        (3, '0.001'),
+        (2, '0.01'),
+        (1, '0.1'),
+        (0, '1.0'),
+    ]
+    
     name = models.CharField(max_length=100)
     description = models.TextField(blank=True)
     custom_fields_schema = models.JSONField(default=list, blank=True)
@@ -25,6 +32,10 @@ class WeighingProcess(models.Model):
     is_active = models.BooleanField(default=False)
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
+    max_weight = models.DecimalField(max_digits=10, decimal_places=2, blank=True, null=True)
+    min_weight = models.DecimalField(max_digits=10, decimal_places=2, blank=True, null=True)
+    weight_rounding = models.IntegerField(blank=True, null=True, choices=WEIGHT_ROUNDING_CHOICES, default=2)
+    allow_manual_entry = models.BooleanField(default=False)
     
     def __str__(self):
         return self.name

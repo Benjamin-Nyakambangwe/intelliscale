@@ -77,6 +77,44 @@
                         </dd>
                     </div>
                     <div>
+                        <dt class="text-sm font-medium text-zinc-500">Max Weight</dt>
+                        <dd class="mt-1 text-sm text-zinc-900">
+                            {% if weighing_process.max_weight %}
+                                {{ weighing_process.max_weight }} kg
+                            {% else %}
+                                <span class="text-zinc-400 italic">Not specified</span>
+                            {% endif %}
+                        </dd>
+                    </div>
+                    <div>
+                        <dt class="text-sm font-medium text-zinc-500">Min Weight</dt>
+                        <dd class="mt-1 text-sm text-zinc-900">
+                            {% if weighing_process.min_weight %}
+                                {{ weighing_process.min_weight }} kg
+                            {% else %}
+                                <span class="text-zinc-400 italic">Not specified</span>
+                            {% endif %}
+                        </dd>
+                    </div>
+                    <div>
+                        <dt class="text-sm font-medium text-zinc-500">Weight Rounding</dt>
+                        <dd class="mt-1 text-sm text-zinc-900">
+                            {% if weighing_process.weight_rounding %}
+                                {{ weighing_process.get_weight_rounding_display }}
+                            {% else %}
+                                <span class="text-zinc-400 italic">Not specified</span>
+                            {% endif %}
+                        </dd>
+                    </div>
+                    <div>
+                        <dt class="text-sm font-medium text-zinc-500">Manual Entry</dt>
+                        <dd class="mt-1 text-sm text-zinc-900">
+                            <span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium {% if weighing_process.allow_manual_entry %}bg-green-100 text-green-800{% else %}bg-red-100 text-red-800{% endif %}">
+                                {{ weighing_process.allow_manual_entry|yesno:"Allowed,Not Allowed" }}
+                            </span>
+                        </dd>
+                    </div>
+                    <div>
                         <dt class="text-sm font-medium text-zinc-500">Status</dt>
                         <dd class="mt-1 text-sm text-zinc-900">{{ weighing_process.is_active|yesno:"Active,Inactive" }}</dd>
                     </div>

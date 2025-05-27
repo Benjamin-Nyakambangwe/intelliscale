@@ -14,6 +14,7 @@ from django.core.paginator import Paginator
 import requests
 import random
 import xmlrpc.client
+import socket
 
 # Scale Management Views
 @login_required
@@ -419,13 +420,17 @@ def weighing_station(request):
         'products': products,
         'processes': processes,
         'delivery_notes': delivery_notes,
-        'process_custom_fields': json.dumps(process_custom_fields)
+        'process_custom_fields': json.dumps(process_custom_fields),
+        'unsynced_count': WeighingRecord.objects.filter(is_synced=False).count()
     }
     
     return render(request, 'scale/weighing_station.html', context)
 
 
 def send_to_erp(barcode, net_weight, scale_id, weighing_record_id, request):
+
+        
+    
     # TODO: Implement actual sending to erp system
     
     # Get company settings
@@ -436,62 +441,87 @@ def send_to_erp(barcode, net_weight, scale_id, weighing_record_id, request):
     print('Username: ', company_settings.erp_username)
     print('API URL: ', company_settings.api_url)
     
+    # Parse URL into host and port
+    # try:
+    #     # Remove protocol prefix if present
+    #     host = company_settings.api_url.replace('http://', '').replace('https://', '')
+    #     # Split host and port (default to 80 if no port specified)
+    #     if ':' in host:
+    #         host, port = host.split(':')
+    #         port = int(port)
+    #     else:
+    #         port = 80
+            
+    #     if socket.socket().connect_ex((host, port)) != 0:
+    #         print("Server is not active, exiting...")
+    #         return False
+            
+    #     else:
+    #         print("Server is active, continuing...")
+    # except Exception as e:
+    #     print(f"Error checking server connection: {str(e)}")
+    #     return False
+    
     # Check for a session id in the browser cookies
     session_id = request.COOKIES.get('session_id')
     print('Session ID from cookies: ', session_id)
     print('Session ID: ', session_id)
     if not session_id:
-        url = f"{company_settings.api_url}/web/session/authenticate"
+        try:
+            url = f"{company_settings.api_url}/web/session/authenticate"
 
-        payload = {
-            "jsonrpc": "2.0",
-            "params": {
-                "db": "ptf_odoo18",
-                "login": company_settings.erp_username,
-                "password": company_settings.erp_password
+            payload = {
+                "jsonrpc": "2.0",
+                "params": {
+                    "db": "ptf_odoo18",
+                    "login": company_settings.erp_username,
+                    "password": company_settings.erp_password
+                }
             }
-        }
-        headers = {
-            "Content-Type": "application/json",
-            "User-Agent": "insomnia/11.0.2"
-        }
+            headers = {
+                "Content-Type": "application/json",
+                "User-Agent": "insomnia/11.0.2"
+            }
 
-        # If we have an existing session_id, use it
-        # if session_id:
-        #     headers["cookie"] = f"session_id={session_id}"
+            # If we have an existing session_id, use it
+            # if session_id:
+            #     headers["cookie"] = f"session_id={session_id}"
 
-        # Debug logging
-        print("Making authentication request to:", url)
-        print("Headers:", headers)
-        print("Payload:", payload)
+            # Debug logging
+            print("Making authentication request to:", url)
+            print("Headers:", headers)
+            print("Payload:", payload)
 
-        response = requests.request("POST", url, json=payload, headers=headers)
+            response = requests.request("POST", url, json=payload, headers=headers)
         
-        # Debug response
-        print("Response status:", response.status_code)
-        print("Response headers:", dict(response.headers))
-        print("Response cookies:", dict(response.cookies))
-        print("Response body:", response.text)
+            # Debug response
+            print("Response status:", response.status_code)
+            print("Response headers:", dict(response.headers))
+            print("Response cookies:", dict(response.cookies))
+            print("Response body:", response.text)
         
-        if response.status_code == 200:
-            result = response.json()
-            if 'result' in result:
-                # Get new session_id from cookies
-                new_session_id = response.cookies.get('session_id')
-                print('New Session ID: ', new_session_id)
-                # response.set_cookie('erp_session_id', new_session_id)
-                session_id = new_session_id
-                
-                # if new_session_id:
-                #     return new_session_id
-                # If no new session_id in cookies but request succeeded, return the existing one
-                # return session_id
-            elif 'error' in result:
-                print('Authentication error:', result['error'].get('data', {}).get('message', 'Unknown error'))
-                # return None
+            if response.status_code == 200:
+                result = response.json()
+                if 'result' in result:
+                    # Get new session_id from cookies
+                    new_session_id = response.cookies.get('session_id')
+                    print('New Session ID: ', new_session_id)
+                    # response.set_cookie('erp_session_id', new_session_id)
+                    session_id = new_session_id
+                    
+                    # if new_session_id:
+                    #     return new_session_id
+                    # If no new session_id in cookies but request succeeded, return the existing one
+                    # return session_id
+                elif 'error' in result:
+                    print('Authentication error:', result['error'].get('data', {}).get('message', 'Unknown error'))
+                    # return None
         
-        print('Failed to authenticate:', response.text)
-        # return None
+            print('Failed to authenticate:', response.text)
+            # return None
+        except Exception as e:
+            print(f"Error sending to erp: {str(e)}")
+            pass
     
     
     if company_settings.erp_system.name == 'Odoo':
@@ -503,50 +533,65 @@ def send_to_erp(barcode, net_weight, scale_id, weighing_record_id, request):
         print('Session ID: ', session_id)
         # session_id = request.COOKIES.get('erp_session_id')
         # print('Session ID: ', session_id)
-        try:
+        if session_id:
+            try:
 
-            url = company_settings.api_url + "/receiving/scaleserver/manual_scale/" + str(round(float(net_weight))) + "/" + barcode
+                url = company_settings.api_url + "/receiving/scaleserver/manual_scale/" + str(round(float(net_weight))) + "/" + barcode
 
-            payload = {}
-            headers = {
-                # TODO: Add session id FROM COOKIE
-                "cookie": f"session_id={session_id}",
-                "Content-Type": "application/json",
-                "User-Agent": "insomnia/11.1.0",
-            }
+                payload = {}
+                headers = {
+                    # TODO: Add session id FROM COOKIE
+                    "cookie": f"session_id={session_id}",
+                    "Content-Type": "application/json",
+                    "User-Agent": "insomnia/11.1.0",
+                }
 
-            response = requests.request("POST", url, json=payload, headers=headers)
-            
-            print(response.status_code)
+                response = requests.request("POST", url, json=payload, headers=headers)
+                
+                print(response.status_code)
 
-            print(response.text)
-            
-            if response.status_code == 200:
-                # Update weighing record with erp response
-                weighing_record = WeighingRecord.objects.get(id=weighing_record_id)
-                weighing_record.is_synced = True
-                weighing_record.last_sync_attempt = timezone.now()
-                weighing_record.save()
-                return True
-            else:
+                print(response.text)
+                
+                if response.status_code == 200:
+                    # Update weighing record with erp response
+                    weighing_record = WeighingRecord.objects.get(id=weighing_record_id)
+                    weighing_record.is_synced = True
+                    weighing_record.last_sync_attempt = timezone.now()
+                    weighing_record.save()
+                    return True
+                else:
+                    weighing_record = WeighingRecord.objects.get(id=weighing_record_id)
+                    weighing_record.is_synced = False
+                    weighing_record.last_sync_attempt = timezone.now()
+                    weighing_record.sync_error_message = response.text
+                    weighing_record.save()
+                    return True
+            except Exception as e:
+                print(f"Error sending to erp: {str(e)}")
                 weighing_record = WeighingRecord.objects.get(id=weighing_record_id)
                 weighing_record.is_synced = False
                 weighing_record.last_sync_attempt = timezone.now()
-                weighing_record.sync_error_message = response.text
+                weighing_record.sync_error_message = str(e)
                 weighing_record.save()
-                return True
-        except Exception as e:
-            print(f"Error sending to erp: {str(e)}")
-            weighing_record = WeighingRecord.objects.get(id=weighing_record_id)
-            weighing_record.is_synced = False
-            weighing_record.last_sync_attempt = timezone.now()
-            weighing_record.sync_error_message = str(e)
-            weighing_record.save()
+                return False
+        else:
+            print('No session id found')
             return False
     else:
         # TODO: Add other erp systems here
         print('ONLY ODOO IS SUPPORTED FOR NOW')
         return False
+    
+
+@login_required
+@user_passes_test(is_admin)
+def sync_all_unsynced(request):
+    print('Syncing all unsynced weighing records')
+    weighing_records = WeighingRecord.objects.filter(is_synced=False)
+    for weighing_record in weighing_records:
+        print('Syncing weighing record: ', weighing_record.id)
+        send_to_erp(weighing_record.barcode, weighing_record.net_weight, weighing_record.scale_id, weighing_record.id, request)
+    return redirect('scale:weighing_record_list')
 
 
 #################################################################################################

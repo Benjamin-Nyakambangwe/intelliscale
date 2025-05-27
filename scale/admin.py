@@ -13,10 +13,10 @@ admin.site.register(Scale, ScaleAdmin)
 
 
 class WeighingProcessAdmin(admin.ModelAdmin):
-    list_display = ('name', 'is_active')
+    list_display = ('name', 'is_active', 'max_weight', 'min_weight', 'weight_rounding', 'allow_manual_entry')
     list_filter = ('is_active',)
     search_fields = ('name',)
-    list_editable = ('is_active',)
+    list_editable = ('is_active', 'max_weight', 'min_weight', 'weight_rounding', 'allow_manual_entry')
     list_per_page = 20
 
 admin.site.register(WeighingProcess, WeighingProcessAdmin)
@@ -43,12 +43,11 @@ admin.site.register(DeliveryNote, DeliveryNoteAdmin)
 
 class WeighingRecordAdmin(admin.ModelAdmin):
     list_display = ('process', 'product', 'gross_weight', 'tare_weight', 'net_weight', 'created_at', 'updated_at')
-    list_filter = ('process', 'product')
+    list_filter = ('process', 'product', 'is_synced')
     search_fields = ('process__name', 'product__name')
     list_per_page = 20
 
 admin.site.register(WeighingRecord, WeighingRecordAdmin)
-
 
 class ErpSystemAdmin(admin.ModelAdmin):
     list_display = ('name', 'created_at', 'updated_at')
