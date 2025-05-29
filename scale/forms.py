@@ -121,10 +121,35 @@ class WeighingProcessForm(forms.ModelForm):
         'allow_manual_entry': forms.CheckboxInput(attrs={
             'class': 'h-4 w-4 text-blue-600 border-zinc-300 rounded focus:ring-blue-500'
         }),
-        
     }
     
-    
+    def clean_is_active(self):
+        is_active = self.cleaned_data.get('is_active')
+        
+        # If the process is being set to active, check for other active processes
+        if is_active:
+            # Get the current instance ID (if it exists)
+            instance_id = self.instance.id if self.instance and self.instance.pk else None
+            
+            # Check if there are any other active processes
+            other_active_processes = WeighingProcess.objects.filter(is_active=True)
+            
+            # Exclude the current instance if it exists
+            if instance_id:
+                other_active_processes = other_active_processes.exclude(id=instance_id)
+            
+            # If there are other active processes, raise a validation error
+            if other_active_processes.exists():
+                active_process = other_active_processes.first()
+                raise forms.ValidationError(
+                    f"Only one weighing process can be active at a time. "
+                    f"Another process '{active_process.name}' is currently active. "
+                    f"Please deactivate it first before activating this one."
+                )
+                
+        return is_active
+
+
 class ProductForm(forms.ModelForm):
     class Meta:
         model = Product
@@ -149,8 +174,34 @@ class ProductForm(forms.ModelForm):
                 'class': 'h-4 w-4 text-blue-600 border-zinc-300 rounded focus:ring-blue-500'
             }),
         }
-    
-    
+        
+    def clean_is_active(self):
+        is_active = self.cleaned_data.get('is_active')
+        
+        # If the product is being set to active, check for other active products
+        if is_active:
+            # Get the current instance ID (if it exists)
+            instance_id = self.instance.id if self.instance and self.instance.pk else None
+            
+            # Check if there are any other active products
+            other_active_products = Product.objects.filter(is_active=True)
+            
+            # Exclude the current instance if it exists
+            if instance_id:
+                other_active_products = other_active_products.exclude(id=instance_id)
+            
+            # If there are other active products, raise a validation error
+            if other_active_products.exists():
+                active_product = other_active_products.first()
+                raise forms.ValidationError(
+                    f"Only one product can be active at a time. "
+                    f"Another product '{active_product.name}' is currently active. "
+                    f"Please deactivate it first before activating this one."
+                )
+                
+        return is_active
+
+
 class DeliveryNoteForm(forms.ModelForm):
     class Meta:
         model = DeliveryNote

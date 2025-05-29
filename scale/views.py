@@ -192,7 +192,7 @@ def get_weight(request, scale_id):
     if request.method == 'POST':
         print(f"Getting weight for scale {scale_id}")
         
-        weight = random.randint(50, 100)
+        weight = random.randint(20, 150)
         return JsonResponse({
             'success': True,
             'weight': weight
@@ -323,12 +323,30 @@ def weighing_station(request):
     processes = WeighingProcess.objects.filter(is_active=True).order_by('name')
     delivery_notes = DeliveryNote.objects.all().order_by('-created_at')[:20]  # Get the 20 most recent delivery notes
     
+    #Get Min and Max Weights from active process
+    min_weight = None
+    max_weight = None
+    allow_manual_entry = False
+    if processes.exists():
+        # Get from the first process (or you could use specific logic to choose which process)
+        active_process = processes.first()
+        min_weight = active_process.min_weight
+        max_weight = active_process.max_weight
+        allow_manual_entry = active_process.allow_manual_entry
+    
+    print('Min Weight: ', min_weight)
+    print('Max Weight: ', max_weight)
+    print('Allow Manual Entry: ', allow_manual_entry)
+    
     # Get custom fields data for all processes
     process_custom_fields = {}
     for process in processes:
         process_custom_fields[process.id] = process.custom_fields_schema
     
     if request.method == 'POST':
+        
+
+        
         try:
             # Extract form data
             scale_id = request.POST.get('scale_id')
@@ -345,6 +363,10 @@ def weighing_station(request):
             gross_weight = Decimal(gross_weight) if gross_weight and gross_weight.strip() else Decimal('0')
             tare_weight = Decimal(tare_weight) if tare_weight and tare_weight.strip() else Decimal('0')
             net_weight = Decimal(net_weight) if net_weight and net_weight.strip() else Decimal('0')
+            
+            if net_weight < min_weight or net_weight > max_weight:
+                messages.error(request, f'Net weight must be between {min_weight} and {max_weight} kg.')
+                return redirect('scale:weighing_station')
             
             # Extract custom fields
             custom_data = {}
@@ -421,7 +443,8 @@ def weighing_station(request):
         'processes': processes,
         'delivery_notes': delivery_notes,
         'process_custom_fields': json.dumps(process_custom_fields),
-        'unsynced_count': WeighingRecord.objects.filter(is_synced=False).count()
+        'unsynced_count': WeighingRecord.objects.filter(is_synced=False).count(),
+        'allow_manual_entry': allow_manual_entry
     }
     
     return render(request, 'scale/weighing_station.html', context)
