@@ -113,6 +113,7 @@ class CompanySettings(models.Model):
     erp_username = models.CharField(max_length=100, blank=True, null=True)
     erp_password = models.CharField(max_length=100, blank=True, null=True)
     api_url = models.CharField(max_length=100, blank=True, null=True)
+    database_name = models.CharField(max_length=100, blank=True, null=True)
     is_active = models.BooleanField(default=True)
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)

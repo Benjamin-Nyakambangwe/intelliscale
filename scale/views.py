@@ -463,6 +463,7 @@ def send_to_erp(barcode, net_weight, scale_id, weighing_record_id, request):
     print('Password: ', company_settings.erp_password)
     print('Username: ', company_settings.erp_username)
     print('API URL: ', company_settings.api_url)
+    print('Database Name: ', company_settings.database_name)
     
     # Parse URL into host and port
     # try:
@@ -496,7 +497,7 @@ def send_to_erp(barcode, net_weight, scale_id, weighing_record_id, request):
             payload = {
                 "jsonrpc": "2.0",
                 "params": {
-                    "db": "ptf_odoo18",
+                    "db": company_settings.database_name,
                     "login": company_settings.erp_username,
                     "password": company_settings.erp_password
                 }

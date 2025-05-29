@@ -39,7 +39,7 @@
                     
                     <!-- Navigation -->
                     <nav class="hidden md:ml-8 md:flex md:space-x-4">
-                        <a href="{% url 'scale:admin_dashboard' %}" class="px-3 py-2 rounded-md text-sm font-medium {% if request.resolver_match.url_name == 'admin_dashboard' %}text-zinc-900 bg-zinc-100{% else %}text-zinc-600 hover:text-zinc-900 hover:bg-zinc-50{% endif %}">Dashboard</a>
+                        {% comment %} <a href="{% url 'scale:admin_dashboard' %}" class="px-3 py-2 rounded-md text-sm font-medium {% if request.resolver_match.url_name == 'admin_dashboard' %}text-zinc-900 bg-zinc-100{% else %}text-zinc-600 hover:text-zinc-900 hover:bg-zinc-50{% endif %}">Dashboard</a> {% endcomment %}
                         <a href="{% url 'scale:weighing_station' %}" class="px-3 py-2 rounded-md text-sm font-medium {% if request.resolver_match.url_name == 'weighing_station' %}text-zinc-900 bg-zinc-100{% else %}text-zinc-600 hover:text-zinc-900 hover:bg-zinc-50{% endif %}">Weighing Station</a>
                         <a href="{% url 'scale:delivery_note_list' %}" class="px-3 py-2 rounded-md text-sm font-medium {% if 'delivery_note' in request.resolver_match.url_name %}text-zinc-900 bg-zinc-100{% else %}text-zinc-600 hover:text-zinc-900 hover:bg-zinc-50{% endif %}">Delivery Notes</a>
                         <a href="{% url 'scale:product_list' %}" class="px-3 py-2 rounded-md text-sm font-medium {% if 'product' in request.resolver_match.url_name %}text-zinc-900 bg-zinc-100{% else %}text-zinc-600 hover:text-zinc-900 hover:bg-zinc-50{% endif %}">Products</a>
@@ -88,11 +88,12 @@
             <!-- Mobile menu, toggle classes based on menu state -->
             <div id="mobile-menu" class="md:hidden hidden">
                 <div class="px-2 pt-2 pb-3 space-y-1">
-                    <a href="{% url 'scale:admin_dashboard' %}" class="block px-3 py-2 rounded-md text-base font-medium {% if request.resolver_match.url_name == 'admin_dashboard' %}text-zinc-900 bg-zinc-100{% else %}text-zinc-600 hover:text-zinc-900 hover:bg-zinc-50{% endif %}">Dashboard</a>
+                    {% comment %} <a href="{% url 'scale:admin_dashboard' %}" class="block px-3 py-2 rounded-md text-base font-medium {% if request.resolver_match.url_name == 'admin_dashboard' %}text-zinc-900 bg-zinc-100{% else %}text-zinc-600 hover:text-zinc-900 hover:bg-zinc-50{% endif %}">Dashboard</a> {% endcomment %}
                     <a href="{% url 'scale:weighing_station' %}" class="block px-3 py-2 rounded-md text-base font-medium {% if request.resolver_match.url_name == 'weighing_station' %}text-zinc-900 bg-zinc-100{% else %}text-zinc-600 hover:text-zinc-900 hover:bg-zinc-50{% endif %}">Weighing Station</a>
                     <a href="{% url 'scale:delivery_note_list' %}" class="block px-3 py-2 rounded-md text-base font-medium {% if 'delivery_note' in request.resolver_match.url_name %}text-zinc-900 bg-zinc-100{% else %}text-zinc-600 hover:text-zinc-900 hover:bg-zinc-50{% endif %}">Delivery Notes</a>
                     <a href="{% url 'scale:product_list' %}" class="block px-3 py-2 rounded-md text-base font-medium {% if 'product' in request.resolver_match.url_name %}text-zinc-900 bg-zinc-100{% else %}text-zinc-600 hover:text-zinc-900 hover:bg-zinc-50{% endif %}">Products</a>
                     <a href="{% url 'scale:scale_list' %}" class="block px-3 py-2 rounded-md text-base font-medium {% if 'scale' in request.resolver_match.url_name and 'weighing' not in request.resolver_match.url_name %}text-zinc-900 bg-zinc-100{% else %}text-zinc-600 hover:text-zinc-900 hover:bg-zinc-50{% endif %}">Scales</a>
+                
                     <a href="{% url 'scale:weighing_record_list' %}" class="block px-3 py-2 rounded-md text-base font-medium {% if 'weighing_record' in request.resolver_match.url_name %}text-zinc-900 bg-zinc-100{% else %}text-zinc-600 hover:text-zinc-900 hover:bg-zinc-50{% endif %}">Weighing Records</a>
                 </div>
                 <div class="pt-4 pb-3 border-t border-zinc-200">

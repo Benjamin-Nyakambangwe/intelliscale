@@ -243,6 +243,7 @@ class CompanySettingsForm(forms.ModelForm):
             'erp_username',
             'erp_password',
             'api_url',
+            'database_name',
             'is_active'
         ]
         widgets = {
@@ -262,6 +263,9 @@ class CompanySettingsForm(forms.ModelForm):
                 'class': 'block w-full rounded-md border-zinc-300 shadow-sm focus:border-blue-500 focus:ring-blue-500 sm:text-sm p-2'
             }),
             'api_url': forms.TextInput(attrs={
+                'class': 'block w-full rounded-md border-zinc-300 shadow-sm focus:border-blue-500 focus:ring-blue-500 sm:text-sm p-2'
+            }),
+            'database_name': forms.TextInput(attrs={
                 'class': 'block w-full rounded-md border-zinc-300 shadow-sm focus:border-blue-500 focus:ring-blue-500 sm:text-sm p-2'
             }),
             'is_active': forms.CheckboxInput(attrs={

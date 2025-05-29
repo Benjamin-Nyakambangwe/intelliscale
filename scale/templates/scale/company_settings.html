@@ -88,6 +88,18 @@
                                 {% endif %}
                             </div>
 
+                            <!-- Database Name -->
+                            <div>
+                                <label for="{{ form.database_name.id_for_label }}" class="block text-sm font-medium text-gray-700">Database Name</label>
+                                <div class="mt-1">
+                                    {{ form.database_name }}    
+                                </div>
+                                {% if form.database_name.errors %}
+                                    <p class="mt-2 text-sm text-red-600">{{ form.database_name.errors }}</p>
+                                {% endif %}
+                            </div>
+                            
+
                             <!-- ERP Username -->
                             <div>
                                 <label for="{{ form.erp_username.id_for_label }}" class="block text-sm font-medium text-gray-700">ERP Username</label>

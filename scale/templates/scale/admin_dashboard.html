@@ -38,11 +38,12 @@
                     
                     <!-- Navigation -->
                     <nav class="hidden md:ml-8 md:flex md:space-x-4">
-                        <a href="{% url 'scale:admin_dashboard' %}" class="px-3 py-2 rounded-md text-sm font-medium text-zinc-900 bg-zinc-100">Dashboard</a>
+                        {% comment %} <a href="{% url 'scale:admin_dashboard' %}" class="px-3 py-2 rounded-md text-sm font-medium text-zinc-900 bg-zinc-100">Dashboard</a> {% endcomment %}
                         <a href="{% url 'scale:weighing_station' %}" class="px-3 py-2 rounded-md text-sm font-medium text-zinc-600 hover:text-zinc-900 hover:bg-zinc-50">Weighing Station</a>
                         <a href="{% url 'scale:delivery_note_list' %}" class="px-3 py-2 rounded-md text-sm font-medium text-zinc-600 hover:text-zinc-900 hover:bg-zinc-50">Delivery Notes</a>
                         <a href="{% url 'scale:product_list' %}" class="px-3 py-2 rounded-md text-sm font-medium text-zinc-600 hover:text-zinc-900 hover:bg-zinc-50">Products</a>
                         <a href="{% url 'scale:scale_list' %}" class="px-3 py-2 rounded-md text-sm font-medium text-zinc-600 hover:text-zinc-900 hover:bg-zinc-50">Scales</a>
+                        <a href="{% url 'scale:company_settings' %}" class="px-3 py-2 rounded-md text-sm font-medium text-zinc-600 hover:text-zinc-900 hover:bg-zinc-50">Company</a>
                     </nav>
                 </div>
                 
@@ -86,11 +87,12 @@
             <!-- Mobile menu, toggle classes based on menu state -->
             <div id="mobile-menu" class="md:hidden hidden">
                 <div class="px-2 pt-2 pb-3 space-y-1">
-                    <a href="{% url 'scale:admin_dashboard' %}" class="block px-3 py-2 rounded-md text-base font-medium text-zinc-900 bg-zinc-100">Dashboard</a>
+                    {% comment %} <a href="{% url 'scale:admin_dashboard' %}" class="block px-3 py-2 rounded-md text-base font-medium text-zinc-900 bg-zinc-100">Dashboard</a> {% endcomment %}
                     <a href="{% url 'scale:weighing_station' %}" class="block px-3 py-2 rounded-md text-base font-medium text-zinc-600 hover:text-zinc-900 hover:bg-zinc-50">Weighing Station</a>
                     <a href="{% url 'scale:delivery_note_list' %}" class="block px-3 py-2 rounded-md text-base font-medium text-zinc-600 hover:text-zinc-900 hover:bg-zinc-50">Delivery Notes</a>
                     <a href="{% url 'scale:product_list' %}" class="block px-3 py-2 rounded-md text-base font-medium text-zinc-600 hover:text-zinc-900 hover:bg-zinc-50">Products</a>
                     <a href="{% url 'scale:scale_list' %}" class="block px-3 py-2 rounded-md text-base font-medium text-zinc-600 hover:text-zinc-900 hover:bg-zinc-50">Scales</a>
+                    <a href="{% url 'scale:company_settings' %}" class="block px-3 py-2 rounded-md text-base font-medium text-zinc-600 hover:text-zinc-900 hover:bg-zinc-50">Company</a>
                 </div>
                 <div class="pt-4 pb-3 border-t border-zinc-200">
                     <div class="flex items-center px-5">
