@@ -457,7 +457,7 @@ def send_to_erp(barcode, net_weight, scale_id, weighing_record_id, request):
     # TODO: Implement actual sending to erp system
     
     # Get company settings
-    company_settings = CompanySettings.objects.get(id=2)
+    company_settings = CompanySettings.objects.get(id=1)
     print('Company Settings: ', company_settings)
     print('Company Settings ERP System: ', company_settings.erp_system.name)
     print('Password: ', company_settings.erp_password)
