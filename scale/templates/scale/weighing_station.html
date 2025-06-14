@@ -857,15 +857,16 @@
                     'X-CSRFToken': '{{ csrf_token }}'
                 },
                 success: function(data) {
+                    console.log('Successfully got weight: ', data);
                     if (data.success) {
                         $('#gross-weight').val(data.weight.toFixed(2));
                         calculateNetWeight();
                     } else {
-                        alert('Failed to get weight: ' + data.message);
+                        console.log('Failed to get weight: ' + data.message);
                     }
                 },
                 error: function(xhr, status, error) {
-                    alert('Error getting weight: ' + error);
+                    console.log('Error getting weight: ' + error);
                 }
             });
         }

@@ -192,66 +192,69 @@ def get_weight(request, scale_id):
     if request.method == 'POST':
         print(f"Getting weight for scale {scale_id}")
         
-        weight = random.randint(20, 150)
-        return JsonResponse({
-            'success': True,
-            'weight': weight
-        })
+        # weight = random.randint(20, 150)
+        # return JsonResponse({
+        #     'success': True,
+        #     'weight': weight
+        # })
         
-    #     try:
-    #         scale = get_object_or_404(Scale, pk=scale_id)
+        try:
+            scale = get_object_or_404(Scale, pk=scale_id)
             
-    #         # Check if scale is connected
-    #         if scale.last_connection_status != "connected":
-    #             return JsonResponse({
-    #                 'success': False,
-    #                 'message': 'Scale is not connected. Please connect the scale first.'
-    #             })
+            # Check if scale is connected
+            if scale.last_connection_status != "connected":
+                return JsonResponse({
+                    'success': False,
+                    # 'message': 'Scale is not connected. Please connect the scale first.'
+                })
             
-    #         # Try to read from the scale
-    #         ser = None
-    #         try:
-    #             ser = serial.Serial(scale.com_port, 9600, timeout=2)
-    #             if ser.is_open:
-    #                 # Send command to get weight (this may vary by scale model)
-    #                 ser.write(b"\r\n")  # Some scales need a CR/LF to trigger reading
-    #                 # Read response
-    #                 line = ser.readline()
-    #                 # weight_str = line.decode(errors='ignore').strip()
-    #                 weight_str = line.decode('utf-8')[7: 14].strip()
+            # Try to read from the scale
+            ser = None
+            try:
+                ser = serial.Serial(scale.com_port, 9600, timeout=2)
+                if ser.is_open:
+                    # Send command to get weight (this may vary by scale model)
+                    ser.write(b"\r\n")  # Some scales need a CR/LF to trigger reading
+                    # Read response
+                    line = ser.readline()
+                    # weight_str = line.decode(errors='ignore').strip()
+                    weight_str = line.decode('utf-8')[7: 14].strip()
+
+                    print('Weight String: ', weight_str)
                     
-    #                 # Parse weight (this parsing logic may need to be adjusted based on your scale's output format)
-    #                 try:
-    #                     weight = float(weight_str)
-    #                     return JsonResponse({
-    #                         'success': True,
-    #                         'weight': weight
-    #                     })
-    #                 except ValueError:
-    #                     return JsonResponse({
-    #                         'success': False,
-    #                         'message': f'Could not parse weight value from scale: {weight_str}'
-    #                     })
+                    # Parse weight (this parsing logic may need to be adjusted based on your scale's output format)
+                    try:
+                        weight_str = weight_str.replace(',', '')
+                        weight = float(weight_str)
+                        return JsonResponse({
+                            'success': True,
+                            'weight': weight
+                        })
+                    except ValueError:
+                        return JsonResponse({
+                            'success': False,
+                            'message': f'Could not parse weight value from scale: {weight_str}'
+                        })
                         
-    #         except serial.SerialException as e:
-    #             return JsonResponse({
-    #                 'success': False,
-    #                 'message': f'Error reading from scale: {str(e)}'
-    #             })
-    #         finally:
-    #             if ser and ser.is_open:
-    #                 ser.close()
+            except serial.SerialException as e:
+                return JsonResponse({
+                    'success': False,
+                    'message': f'Error reading from scale: {str(e)}'
+                })
+            finally:
+                if ser and ser.is_open:
+                    ser.close()
                     
-    #     except Exception as e:
-    #         return JsonResponse({
-    #             'success': False,
-    #             'message': str(e)
-    #         })
+        except Exception as e:
+            return JsonResponse({
+                'success': False,
+                'message': str(e)
+            })
     
-    # return JsonResponse({
-    #     'success': False,
-    #     'message': 'Only POST requests are allowed.'
-    # })
+    return JsonResponse({
+        'success': False,
+        'message': 'Only POST requests are allowed.'
+    })
 
 
 
