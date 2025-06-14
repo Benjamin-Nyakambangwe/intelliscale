@@ -130,6 +130,15 @@
                                    autocomplete="off"
                                    autofocus required>
                         </div>
+
+                        <script>
+                            document.getElementById('barcode-input').addEventListener('keydown', function(event) {
+                                if (event.key === 'Enter') {
+                                    event.preventDefault();
+                                    return false;
+                                }
+                            });
+                            </script>
                         
                         <div class="flex space-x-2">
                             <button id="save-btn" type="submit" class="inline-flex items-center justify-center whitespace-nowrap rounded-md text-sm font-medium bg-zinc-900 text-zinc-50 hover:bg-zinc-900/90 h-10 px-4 py-2 w-1/2">
@@ -836,7 +845,7 @@
             const scaleId = $('#scale-select').val();
             
             if (!scaleId) {
-                alert('Please select a scale first');
+                console.log('Please select a scale first');
                 return;
             }
             

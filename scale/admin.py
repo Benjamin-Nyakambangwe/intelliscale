@@ -57,7 +57,7 @@ class ErpSystemAdmin(admin.ModelAdmin):
 admin.site.register(ErpSystem, ErpSystemAdmin)
 
 class CompanySettingsAdmin(admin.ModelAdmin):
-    list_display = ('company_name', 'erp_system', 'is_active', 'created_at', 'updated_at')
+    list_display = ('id', 'company_name', 'erp_system', 'is_active', 'created_at', 'updated_at')
     list_filter = ('is_active',)
     search_fields = ('company_name', 'erp_system__name')
     list_per_page = 20

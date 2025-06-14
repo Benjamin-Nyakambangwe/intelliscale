@@ -58,23 +58,23 @@ WSGI_APPLICATION = 'core.wsgi.application'
 
 # Database
 
-# DATABASES = {
-#    'default': {
-#        'ENGINE': 'django.db.backends.sqlite3',
-#        'NAME': BASE_DIR / 'db.sqlite3',
-#    }
-# }
-
 DATABASES = {
-    'default': {
-        'ENGINE': 'django.db.backends.postgresql_psycopg2',
-        'NAME': 'scale_db',
-        'USER': 'ben',
-        'PASSWORD': '123456seven',
-        'HOST': 'localhost',
-        'PORT': '',
-    }
+   'default': {
+       'ENGINE': 'django.db.backends.sqlite3',
+       'NAME': BASE_DIR / 'db.sqlite3',
+   }
 }
+
+# DATABASES = {
+#     'default': {
+#         'ENGINE': 'django.db.backends.postgresql_psycopg2',
+#         'NAME': 'scale_db',
+#         'USER': 'ben',
+#         'PASSWORD': '123456seven',
+#         'HOST': 'localhost',
+#         'PORT': '',
+#     }
+# }
 
 
 

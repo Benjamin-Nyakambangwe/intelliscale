@@ -457,7 +457,7 @@ def send_to_erp(barcode, net_weight, scale_id, weighing_record_id, request):
     # TODO: Implement actual sending to erp system
     
     # Get company settings
-    company_settings = CompanySettings.objects.get(id=1)
+    company_settings = CompanySettings.objects.get(id=2)
     print('Company Settings: ', company_settings)
     print('Company Settings ERP System: ', company_settings.erp_system.name)
     print('Password: ', company_settings.erp_password)
@@ -1099,7 +1099,7 @@ def export_records_to_pdf(records):
 @user_passes_test(is_admin)
 def company_settings(request):
     # Get the first company settings record or None
-    company_settings = CompanySettings.objects.first()
+    company_settings = CompanySettings.objects.get(id=2)
     
     if request.method == 'POST':
         form = CompanySettingsForm(request.POST, instance=company_settings)
