@@ -75,7 +75,8 @@ def scale_delete(request, pk):
 
 
 @login_required
-@user_passes_test(is_admin)
+# @user_passes_test(is_admin)
+@login_required
 def connect_scale_view(request, scale_id):
     if request.method == 'POST':
         try:
