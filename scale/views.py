@@ -336,15 +336,17 @@ def weighing_station(request):
         min_weight = active_process.min_weight
         max_weight = active_process.max_weight
         allow_manual_entry = active_process.allow_manual_entry
+        weight_rounding = active_process.weight_rounding
     
     print('Min Weight: ', min_weight)
     print('Max Weight: ', max_weight)
     print('Allow Manual Entry: ', allow_manual_entry)
-    
+    print('Weight Rounding: ', weight_rounding)
     # Get custom fields data for all processes
     process_custom_fields = {}
     for process in processes:
         process_custom_fields[process.id] = process.custom_fields_schema
+
     
     if request.method == 'POST':
         
@@ -361,6 +363,11 @@ def weighing_station(request):
             unit_of_measure = request.POST.get('unit_of_measure', 'kg')
             notes = request.POST.get('notes', '')
             barcode = request.POST.get('barcode', '')
+            
+            # Round net weight to the nearest weight_rounding
+            # net_weight = round(float(net_weight), weight_rounding)
+
+            print('Net Weight: ', net_weight)
             
             # Convert weights to Decimal, handling empty strings
             gross_weight = Decimal(gross_weight) if gross_weight and gross_weight.strip() else Decimal('0')
@@ -398,6 +405,11 @@ def weighing_station(request):
                             status=note_status
                         )
             
+            print('------FINAL--------------------------')
+            print('Net Weight: ', net_weight)
+            print('Gross Weight: ', gross_weight)
+            print('Tare Weight: ', tare_weight)
+
             # Create the weighing record
             weighing_record = WeighingRecord.objects.create(
                 scale_id=scale_id,
@@ -460,7 +472,7 @@ def send_to_erp(barcode, net_weight, scale_id, weighing_record_id, request):
     # TODO: Implement actual sending to erp system
     
     # Get company settings
-    company_settings = CompanySettings.objects.get(id=2)
+    company_settings = CompanySettings.objects.first()
     print('Company Settings: ', company_settings)
     print('Company Settings ERP System: ', company_settings.erp_system.name)
     print('Password: ', company_settings.erp_password)
@@ -1102,7 +1114,7 @@ def export_records_to_pdf(records):
 @user_passes_test(is_admin)
 def company_settings(request):
     # Get the first company settings record or None
-    company_settings = CompanySettings.objects.get(id=2)
+    company_settings = CompanySettings.objects.first()
     
     if request.method == 'POST':
         form = CompanySettingsForm(request.POST, instance=company_settings)
