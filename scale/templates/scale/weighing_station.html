@@ -882,12 +882,12 @@
             
             // If a scale is selected, start polling
             if ($(this).val()) {
-                weightPollingInterval = setInterval(getWeight, 3000); // Poll every 3 seconds
+                weightPollingInterval = setInterval(getWeight, 500); // Poll every 0.5 seconds
             }
         });
 
         $(window).on('load', function() {
-            weightPollingInterval = setInterval(getWeight, 3000);
+            weightPollingInterval = setInterval(getWeight, 500);
         });
 
         // Stop polling when leaving the page
