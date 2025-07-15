@@ -3,10 +3,10 @@ from users.models import CustomUser
 
 class Scale(models.Model):
     name = models.CharField(max_length=100)
-    com_port = models.CharField(max_length=50)
+    com_port = models.CharField(max_length=50, blank=True, null=True)
     manufacturer = models.CharField(max_length=50)
     model_number = models.CharField(max_length=50)
-    max_capacity = models.DecimalField(max_digits=10, decimal_places=2, help_text="Maximum weight capacity in kg")
+    max_capacity = models.DecimalField(max_digits=10, decimal_places=2, blank=True, null=True, help_text="Maximum weight capacity in kg")
     is_active = models.BooleanField(default=True)
     last_connection_status = models.CharField(max_length=50, default='disconnected')
     last_seen = models.DateTimeField(null=True, blank=True)
