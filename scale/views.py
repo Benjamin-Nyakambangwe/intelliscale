@@ -15,6 +15,7 @@ import requests
 import random
 import xmlrpc.client
 import socket
+from datetime import datetime
 
 # Scale Management Views
 @login_required
@@ -351,8 +352,6 @@ def weighing_station(request):
     
     if request.method == 'POST':
         
-
-        
         try:
             # Extract form data
             scale_id = request.POST.get('scale_id')
@@ -387,45 +386,77 @@ def weighing_station(request):
                     custom_data[field_name] = value
             
             # Handle delivery note association
-            add_to_delivery_note = request.POST.get('add_to_delivery_note') == 'on'
             delivery_note = None
-            
-            if add_to_delivery_note:
-                note_option = request.POST.get('note_option')
-                if note_option == 'existing':
-                    delivery_note_id = request.POST.get('delivery_note_id')
-                    if delivery_note_id:
-                        delivery_note = get_object_or_404(DeliveryNote, pk=delivery_note_id)
-                elif note_option == 'new':
-                    delivery_note_number = request.POST.get('new_note_number')
-                    note_status = request.POST.get('new_note_status', 'draft')
-                    if delivery_note_number:
-                        delivery_note = DeliveryNote.objects.create(
-                            delivery_note_number=delivery_note_number,
-                            created_by=request.user,
-                            status=note_status
-                        )
+            delivery_note_id = request.POST.get('delivery_note_id')
+            if delivery_note_id:
+                delivery_note = get_object_or_404(DeliveryNote, pk=delivery_note_id)
             
             print('------FINAL--------------------------')
             print('Net Weight: ', net_weight)
             print('Gross Weight: ', gross_weight)
             print('Tare Weight: ', tare_weight)
-
-            # Create the weighing record
-            weighing_record = WeighingRecord.objects.create(
-                scale_id=scale_id,
-                product_id=product_id,
-                process_id=process_id,
-                user=request.user,
-                gross_weight=gross_weight,
-                tare_weight=tare_weight,
-                net_weight=net_weight,
-                unit_of_measure=unit_of_measure,
-                notes=notes,
-                custom_data=custom_data,
-                delivery_note=delivery_note,
-                barcode=barcode
-            )
+            
+            # Check if this is a weighbridge process and handle existing records
+            weighing_record = None
+            process = WeighingProcess.objects.get(pk=process_id)
+            
+            if process.process_type == 'WeighBridge' and delivery_note:
+                # Look for existing weighing record in this delivery note that has gross weight but no tare weight
+                existing_record = WeighingRecord.objects.filter(
+                    delivery_note=delivery_note,
+                    gross_weight__gt=0,  # Has gross weight
+                    tare_weight__isnull=True  # No tare weight yet
+                ).first()
+                
+                # Also check for records with tare_weight = 0
+                if not existing_record:
+                    existing_record = WeighingRecord.objects.filter(
+                        delivery_note=delivery_note,
+                        gross_weight__gt=0,  # Has gross weight
+                        tare_weight=0  # Tare weight is 0
+                    ).first()
+                
+                if existing_record:
+                    # Update existing record with tare weight (current weight becomes tare)
+                    existing_record.tare_weight = gross_weight  # Current weight reading becomes tare
+                    existing_record.net_weight = existing_record.gross_weight - existing_record.tare_weight
+                    existing_record.user = request.user  # Update user who performed tare weighing
+                    existing_record.notes = notes if notes else existing_record.notes  # Update notes if provided
+                    existing_record.save()
+                    weighing_record = existing_record
+                    messages.success(request, f'Tare weight updated for existing weighing record in delivery note {delivery_note.delivery_note_number}.')
+                else:
+                    # Create new record as normal (first weighing - gross weight)
+                    weighing_record = WeighingRecord.objects.create(
+                        scale_id=scale_id,
+                        product_id=product_id,
+                        process_id=process_id,
+                        user=request.user,
+                        gross_weight=gross_weight,
+                        tare_weight=tare_weight,
+                        net_weight=net_weight,
+                        unit_of_measure=unit_of_measure,
+                        notes=notes,
+                        custom_data=custom_data,
+                        delivery_note=delivery_note,
+                        barcode=barcode
+                    )
+            else:
+                # Create new record as normal (not weighbridge or no delivery note)
+                weighing_record = WeighingRecord.objects.create(
+                    scale_id=scale_id,
+                    product_id=product_id,
+                    process_id=process_id,
+                    user=request.user,
+                    gross_weight=gross_weight,
+                    tare_weight=tare_weight,
+                    net_weight=net_weight,
+                    unit_of_measure=unit_of_measure,
+                    notes=notes,
+                    custom_data=custom_data,
+                    delivery_note=delivery_note,
+                    barcode=barcode
+                )
             
             # Send barcode, mass and scale id to erp system (if record created successfully)
             if weighing_record:
@@ -718,7 +749,9 @@ def delivery_note_create(request):
     if request.method == 'POST':
         form = DeliveryNoteForm(request.POST)
         if form.is_valid():
-            delivery_note = form.save()
+            delivery_note = form.save(commit=False)
+            delivery_note.created_by = request.user
+            delivery_note.save()
             messages.success(request, f'Delivery Note {delivery_note.delivery_note_number} was created successfully.')
             return redirect('scale:delivery_note_list')
     else:
@@ -1130,3 +1163,344 @@ def company_settings(request):
         'form': form,
         'company_settings': company_settings
     })
+
+@login_required
+@user_passes_test(is_admin)
+def print_delivery_note(request, pk):
+    """Generate and return a professionally styled PDF for the delivery note"""
+    delivery_note = get_object_or_404(DeliveryNote, pk=pk)
+    
+    from django.http import HttpResponse
+    from reportlab.lib import colors
+    from reportlab.lib.pagesizes import letter, A4
+    from reportlab.platypus import SimpleDocTemplate, Table, TableStyle, Paragraph, Spacer, Image, PageBreak
+    from reportlab.lib.styles import getSampleStyleSheet, ParagraphStyle
+    from reportlab.lib.units import inch, mm
+    from reportlab.lib.enums import TA_CENTER, TA_LEFT, TA_RIGHT
+    from io import BytesIO
+    import os
+    
+    # Create QR code if it doesn't exist
+    if not delivery_note.qr_code:
+        delivery_note.generate_qr_code()
+        delivery_note.save()
+    
+    buffer = BytesIO()
+    doc = SimpleDocTemplate(
+        buffer, 
+        pagesize=A4,
+        topMargin=0.75*inch,
+        bottomMargin=0.75*inch,
+        leftMargin=0.75*inch,
+        rightMargin=0.75*inch
+    )
+    elements = []
+    
+    # Define custom styles
+    styles = getSampleStyleSheet()
+    
+    # Company header style
+    company_style = ParagraphStyle(
+        'CompanyHeader',
+        parent=styles['Normal'],
+        fontSize=24,
+        fontName='Helvetica-Bold',
+        spaceAfter=5,
+        alignment=TA_LEFT,
+        textColor=colors.HexColor('#1f2937')
+    )
+    
+    # Title style
+    title_style = ParagraphStyle(
+        'DocumentTitle',
+        parent=styles['Normal'],
+        fontSize=20,
+        fontName='Helvetica-Bold',
+        spaceAfter=30,
+        spaceBefore=10,
+        alignment=TA_CENTER,
+        textColor=colors.HexColor('#374151'),
+        # borderWidth=2,
+        # borderColor=colors.HexColor('#6b7280'),
+        # borderPadding=10,
+        # backColor=colors.HexColor('#f9fafb')
+    )
+    
+    # Section header style
+    section_style = ParagraphStyle(
+        'SectionHeader',
+        parent=styles['Normal'],
+        fontSize=14,
+        fontName='Helvetica-Bold',
+        spaceAfter=10,
+        spaceBefore=20,
+        textColor=colors.HexColor('#374151'),
+        # borderWidth=1,
+        # borderColor=colors.HexColor('#d1d5db'),
+        # leftIndent=0,
+        # borderPadding=8,
+        # backColor=colors.HexColor('#f3f4f6')
+    )
+    
+    # Info text style
+    info_style = ParagraphStyle(
+        'InfoText',
+        parent=styles['Normal'],
+        fontSize=10,
+        fontName='Helvetica',
+        textColor=colors.HexColor('#4b5563')
+    )
+    
+    # Header with company name and QR code
+    header_data = []
+    
+    # Create QR code image for PDF from media folder
+    qr_img = None
+    if delivery_note.qr_code and delivery_note.qr_code.name:
+        try:
+            # Get the full path to the QR code file in media folder
+            from django.conf import settings
+            qr_code_path = os.path.join(settings.MEDIA_ROOT, delivery_note.qr_code.name)
+            
+            # Check if file exists and create reportlab Image
+            if os.path.exists(qr_code_path):
+                qr_img = Image(qr_code_path, width=1.2*inch, height=1.2*inch)
+        except Exception as e:
+            # If QR code fails, continue without it
+            pass
+    
+    # Company header with QR code
+    if qr_img:
+        header_table_data = [
+            [Paragraph("IntelliScale", company_style), qr_img],
+            [Paragraph("Weighing Management System", info_style), Paragraph(f"QR: {delivery_note.delivery_note_number}", info_style)]
+        ]
+        header_table = Table(header_table_data, colWidths=[5*inch, 1.5*inch])
+        header_table.setStyle(TableStyle([
+            ('VALIGN', (0, 0), (-1, -1), 'MIDDLE'),
+            ('ALIGN', (0, 0), (0, -1), 'LEFT'),
+            ('ALIGN', (1, 0), (1, -1), 'CENTER'),
+            ('TOPPADDING', (0, 0), (-1, -1), 10),
+            ('BOTTOMPADDING', (0, 0), (-1, -1), 10),
+        ]))
+        elements.append(header_table)
+    else:
+        elements.append(Paragraph("IntelliScale", company_style))
+        elements.append(Paragraph("Weighing Management System", info_style))
+    
+    elements.append(Spacer(1, 20))
+    
+    # Document title
+    elements.append(Paragraph("DELIVERY NOTE", title_style))
+    elements.append(Spacer(1, 10))
+    
+    # Basic information section
+    elements.append(Paragraph("Delivery Information", section_style))
+    
+    info_data = [
+        ['Delivery Note Number:', delivery_note.delivery_note_number or 'N/A'],
+        # ['Status:', delivery_note.status or 'N/A'],
+        ['Created By:', f"{delivery_note.created_by.first_name} {delivery_note.created_by.last_name}"],
+        ['Created Date:', delivery_note.created_at.strftime('%B %d, %Y at %I:%M %p')],
+        # ['Last Updated:', delivery_note.updated_at.strftime('%B %d, %Y at %I:%M %p')],
+        # ['Sync Status:', 'Synced ✅' if delivery_note.is_synced else 'Not Synced ⏳'],
+    ]
+    
+    info_table = Table(info_data, colWidths=[2.2*inch, 4*inch])
+    info_table.setStyle(TableStyle([
+        ('FONTNAME', (0, 0), (-1, -1), 'Helvetica'),
+        ('FONTSIZE', (0, 0), (-1, -1), 10),
+        ('FONTNAME', (0, 0), (0, -1), 'Helvetica-Bold'),
+        ('ALIGN', (0, 0), (0, -1), 'RIGHT'),
+        ('ALIGN', (1, 0), (1, -1), 'LEFT'),
+        ('VALIGN', (0, 0), (-1, -1), 'TOP'),
+        ('LEFTPADDING', (0, 0), (-1, -1), 8),
+        ('RIGHTPADDING', (0, 0), (-1, -1), 8),
+        ('TOPPADDING', (0, 0), (-1, -1), 8),
+        ('BOTTOMPADDING', (0, 0), (-1, -1), 8),
+        ('GRID', (0, 0), (-1, -1), 0.5, colors.HexColor('#e5e7eb')),
+        ('BACKGROUND', (0, 0), (-1, -1), colors.HexColor('#fafafa')),
+        ('TEXTCOLOR', (0, 0), (0, -1), colors.HexColor('#374151')),
+        ('TEXTCOLOR', (1, 0), (1, -1), colors.HexColor('#111827')),
+    ]))
+    
+    elements.append(info_table)
+    
+    # Vehicle and driver information section
+    elements.append(Paragraph("Vehicle & Driver Information", section_style))
+    
+    vehicle_data = [
+        ['Driver:', delivery_note.driver.name if delivery_note.driver else 'Not assigned'],
+        ['Phone:', delivery_note.driver.phone if delivery_note.driver and delivery_note.driver.phone else 'N/A'],
+        ['Truck:', delivery_note.truck.license_plate if delivery_note.truck else 'Not assigned'],
+        ['Brand/Color:', f"{delivery_note.truck.brand or 'N/A'} {('(' + delivery_note.truck.color + ')') if delivery_note.truck and delivery_note.truck.color else ''}" if delivery_note.truck else 'N/A'],
+        ['Trailer 1:', delivery_note.trailer1.license_plate if delivery_note.trailer1 else 'Not assigned'],
+        ['Trailer 2:', delivery_note.trailer2.license_plate if delivery_note.trailer2 else 'Not assigned'],
+    ]
+    
+    vehicle_table = Table(vehicle_data, colWidths=[2.2*inch, 4*inch])
+    vehicle_table.setStyle(TableStyle([
+        ('FONTNAME', (0, 0), (-1, -1), 'Helvetica'),
+        ('FONTSIZE', (0, 0), (-1, -1), 10),
+        ('FONTNAME', (0, 0), (0, -1), 'Helvetica-Bold'),
+        ('ALIGN', (0, 0), (0, -1), 'RIGHT'),
+        ('ALIGN', (1, 0), (1, -1), 'LEFT'),
+        ('VALIGN', (0, 0), (-1, -1), 'TOP'),
+        ('LEFTPADDING', (0, 0), (-1, -1), 8),
+        ('RIGHTPADDING', (0, 0), (-1, -1), 8),
+        ('TOPPADDING', (0, 0), (-1, -1), 8),
+        ('BOTTOMPADDING', (0, 0), (-1, -1), 8),
+        ('GRID', (0, 0), (-1, -1), 0.5, colors.HexColor('#e5e7eb')),
+        ('BACKGROUND', (0, 0), (-1, -1), colors.HexColor('#fafafa')),
+        ('TEXTCOLOR', (0, 0), (0, -1), colors.HexColor('#374151')),
+        ('TEXTCOLOR', (1, 0), (1, -1), colors.HexColor('#111827')),
+    ]))
+    
+    elements.append(vehicle_table)
+    
+    # Notes section
+    if delivery_note.notes:
+        elements.append(Paragraph("Notes", section_style))
+        notes_para = Paragraph(delivery_note.notes, ParagraphStyle(
+            'Notes',
+            parent=styles['Normal'],
+            fontSize=10,
+            fontName='Helvetica',
+            leftIndent=10,
+            rightIndent=10,
+            spaceBefore=5,
+            spaceAfter=10,
+            borderWidth=1,
+            borderColor=colors.HexColor('#d1d5db'),
+            borderPadding=10,
+            backColor=colors.HexColor('#fffbeb'),
+            textColor=colors.HexColor('#374151')
+        ))
+        elements.append(notes_para)
+    
+    # Associated weighing records
+    weighing_records = delivery_note.weighingrecord_set.all()
+    if weighing_records.exists():
+        elements.append(Paragraph("Associated Weighing Records", section_style))
+        
+        records_data = [
+            ['ID', 'Date & Time', 'Product', 'Gross Weight', 'Net Weight', 'Unit', 'Operator']
+        ]
+        
+        for record in weighing_records:
+            records_data.append([
+                str(record.id),
+                record.timestamp.strftime('%m/%d/%Y\n%I:%M %p'),
+                record.product.name if record.product else 'N/A',
+                f"{record.gross_weight:.2f}",
+                f"{record.net_weight:.2f}",
+                record.unit_of_measure,
+                f"{record.user.first_name} {record.user.last_name}"[:15] + "..." if len(f"{record.user.first_name} {record.user.last_name}") > 15 else f"{record.user.first_name} {record.user.last_name}"
+            ])
+        
+        records_table = Table(records_data, colWidths=[0.6*inch, 1.1*inch, 1.3*inch, 0.9*inch, 0.9*inch, 0.6*inch, 1*inch])
+        records_table.setStyle(TableStyle([
+            # Header styling
+            ('BACKGROUND', (0, 0), (-1, 0), colors.HexColor('#374151')),
+            ('TEXTCOLOR', (0, 0), (-1, 0), colors.white),
+            ('ALIGN', (0, 0), (-1, 0), 'CENTER'),
+            ('FONTNAME', (0, 0), (-1, 0), 'Helvetica-Bold'),
+            ('FONTSIZE', (0, 0), (-1, 0), 9),
+            ('TOPPADDING', (0, 0), (-1, 0), 12),
+            ('BOTTOMPADDING', (0, 0), (-1, 0), 12),
+            
+            # Data rows styling
+            ('BACKGROUND', (0, 1), (-1, -1), colors.white),
+            ('TEXTCOLOR', (0, 1), (-1, -1), colors.HexColor('#374151')),
+            ('ALIGN', (0, 1), (-1, -1), 'CENTER'),
+            ('FONTNAME', (0, 1), (-1, -1), 'Helvetica'),
+            ('FONTSIZE', (0, 1), (-1, -1), 8),
+            ('TOPPADDING', (0, 1), (-1, -1), 8),
+            ('BOTTOMPADDING', (0, 1), (-1, -1), 8),
+            
+            # Alternating row colors
+            ('ROWBACKGROUNDS', (0, 1), (-1, -1), [colors.white, colors.HexColor('#f9fafb')]),
+            
+            # Grid
+            ('GRID', (0, 0), (-1, -1), 0.5, colors.HexColor('#d1d5db')),
+            
+            # Alignment for specific columns
+            ('ALIGN', (3, 1), (4, -1), 'RIGHT'),  # Weight columns right-aligned
+            ('VALIGN', (0, 0), (-1, -1), 'MIDDLE'),
+        ]))
+        
+        elements.append(records_table)
+    
+    # Footer
+    elements.append(Spacer(1, 30))
+    footer_style = ParagraphStyle(
+        'Footer',
+        parent=styles['Normal'],
+        fontSize=8,
+        fontName='Helvetica',
+        alignment=TA_CENTER,
+        textColor=colors.HexColor('#6b7280'),
+        spaceBefore=20
+    )
+    
+    elements.append(Paragraph("─" * 50, footer_style))
+    elements.append(Paragraph(f"Generated on {datetime.now().strftime('%B %d, %Y at %I:%M %p')}", footer_style))
+    elements.append(Paragraph("IntelliScale Weighing Management System", footer_style))
+    
+    # Build the PDF
+    doc.build(elements)
+    
+    # Get the value of the buffer
+    pdf = buffer.getvalue()
+    buffer.close()
+    
+    # Create the HTTP response
+    response = HttpResponse(content_type='application/pdf')
+    response['Content-Disposition'] = f'attachment; filename="delivery_note_{delivery_note.delivery_note_number or delivery_note.id}.pdf"'
+    response.write(pdf)
+    
+    return response
+
+@login_required
+def get_delivery_note_record(request, delivery_note_id):
+    """Get existing weighing record data for a delivery note (for weighbridge)"""
+    if request.method != 'GET':
+        return JsonResponse({'success': False, 'message': 'Only GET requests allowed'})
+    
+    try:
+        delivery_note = get_object_or_404(DeliveryNote, pk=delivery_note_id)
+        weighing_records = WeighingRecord.objects.filter(delivery_note=delivery_note)
+        
+        if weighing_records.count() > 1:
+            return JsonResponse({
+                'success': True,
+                'multiple_records': True,
+                'message': 'Multiple records found'
+            })
+        
+        if weighing_records.count() == 1:
+            record = weighing_records.first()
+            return JsonResponse({
+                'success': True,
+                'multiple_records': False,
+                'record': {
+                    'barcode': record.barcode,
+                    'custom_data': record.custom_data,
+                    'gross_weight': float(record.gross_weight),
+                    'tare_weight': float(record.tare_weight),
+                    'net_weight': float(record.net_weight)
+                }
+            })
+        
+        # No records found
+        return JsonResponse({
+            'success': True,
+            'multiple_records': False,
+            'record': None
+        })
+        
+    except Exception as e:
+        return JsonResponse({
+            'success': False,
+            'message': str(e)
+        })

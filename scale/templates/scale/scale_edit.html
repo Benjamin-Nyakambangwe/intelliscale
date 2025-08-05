@@ -39,6 +39,62 @@
                 {% endif %}
             </div>
 
+            <!-- Baud Rate -->
+            <div>
+                <label for="{{ form.baud_rate.id_for_label }}" class="block text-sm font-medium text-zinc-700">Baud Rate</label>
+                <div class="mt-1">
+                    {{ form.baud_rate }}
+                </div>
+                {% if form.baud_rate.errors %}
+                    <p class="mt-2 text-sm text-red-600">{{ form.baud_rate.errors }}</p>
+                {% endif %}
+            </div>
+
+            <!-- Timeout -->
+            <div>
+                <label for="{{ form.timeout.id_for_label }}" class="block text-sm font-medium text-zinc-700">Timeout</label>
+                <div class="mt-1">
+                    {{ form.timeout }}
+                </div>
+                {% if form.timeout.errors %}
+                    <p class="mt-2 text-sm text-red-600">{{ form.timeout.errors }}</p>
+                {% endif %}
+            </div>
+
+            <!-- Parity -->
+            <div>
+                <label for="{{ form.parity.id_for_label }}" class="block text-sm font-medium text-zinc-700">Parity</label>
+                <div class="mt-1">
+                    {{ form.parity }}
+                </div>
+                {% if form.parity.errors %}
+                    <p class="mt-2 text-sm text-red-600">{{ form.parity.errors }}</p>
+                {% endif %}
+            </div>
+
+            <!-- Stop Bits -->
+            <div>
+                <label for="{{ form.stop_bits.id_for_label }}" class="block text-sm font-medium text-zinc-700">Stop Bits</label>
+                <div class="mt-1">
+                    {{ form.stop_bits }}
+                </div>
+                {% if form.stop_bits.errors %}
+                    <p class="mt-2 text-sm text-red-600">{{ form.stop_bits.errors }}</p>
+                {% endif %}
+            </div>
+
+            <!-- Data Bits -->
+            <div>
+                <label for="{{ form.data_bits.id_for_label }}" class="block text-sm font-medium text-zinc-700">Data Bits</label>
+                <div class="mt-1">
+                    {{ form.data_bits }}
+                </div>
+                {% if form.data_bits.errors %}
+                    <p class="mt-2 text-sm text-red-600">{{ form.data_bits.errors }}</p>
+                {% endif %}
+            </div>
+
+
             <!-- Manufacturer -->
             <div>
                 <label for="{{ form.manufacturer.id_for_label }}" class="block text-sm font-medium text-zinc-700">Manufacturer</label>

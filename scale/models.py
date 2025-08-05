@@ -1,11 +1,20 @@
 from django.db import models
 from users.models import CustomUser
+import qrcode
+from io import BytesIO
+from django.core.files import File
+from PIL import Image
 
 class Scale(models.Model):
     name = models.CharField(max_length=100)
     com_port = models.CharField(max_length=50, blank=True, null=True)
-    manufacturer = models.CharField(max_length=50)
-    model_number = models.CharField(max_length=50)
+    baud_rate = models.IntegerField(default=9600)
+    timeout = models.IntegerField(default=1)
+    parity = models.CharField(max_length=10, choices=[('N', 'None'), ('E', 'Even'), ('O', 'Odd')], default='N')
+    stop_bits = models.IntegerField(default=1)
+    data_bits = models.IntegerField(default=8)
+    manufacturer = models.CharField(max_length=50, blank=True, null=True)
+    model_number = models.CharField(max_length=50, blank=True, null=True)
     max_capacity = models.DecimalField(max_digits=10, decimal_places=2, blank=True, null=True, help_text="Maximum weight capacity in kg")
     is_active = models.BooleanField(default=True)
     last_connection_status = models.CharField(max_length=50, default='disconnected')
@@ -36,6 +45,7 @@ class WeighingProcess(models.Model):
     min_weight = models.DecimalField(max_digits=10, decimal_places=2, blank=True, null=True)
     weight_rounding = models.IntegerField(blank=True, null=True, choices=WEIGHT_ROUNDING_CHOICES, default=2)
     allow_manual_entry = models.BooleanField(default=False)
+    process_type = models.CharField(max_length=100, blank=True, null=True, choices=[('WeighBridge', 'WeighBridge'),('Manual', 'Manual'), ('Automated', 'Automated')], default='WeighBridge')
     
     def __str__(self):
         return self.name
@@ -80,12 +90,41 @@ class WeighingRecord(models.Model):
     
     def __str__(self):
         return f"{self.scale.name} - {self.product.name} - {self.timestamp}"
+
+
+class Driver(models.Model):
+    name = models.CharField(max_length=100)
+    phone = models.CharField(max_length=100, blank=True, null=True)
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
     
+    def __str__(self):
+        return self.name
+
+class Truck(models.Model):
+    brand = models.CharField(max_length=100, blank=True, null=True)
+    license_plate = models.CharField(max_length=100)
+    color = models.CharField(max_length=100, blank=True, null=True)
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    def __str__(self):
+        return self.license_plate
+    
+class Trailer(models.Model):
+    brand = models.CharField(max_length=100, blank=True, null=True)
+    license_plate = models.CharField(max_length=100)
+    color = models.CharField(max_length=100, blank=True, null=True)
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+    
+    def __str__(self):
+        return self.license_plate    
 
 class DeliveryNote(models.Model):
     delivery_note_number = models.CharField(max_length=100, blank=True)
     created_by = models.ForeignKey(CustomUser, on_delete=models.CASCADE)
-    status = models.CharField(max_length=100, blank=True)
+    status = models.CharField(max_length=100, blank=True, choices=[('Open', 'Open'), ('Closed', 'Closed')], default='Open')
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
     is_synced = models.BooleanField(default=False)
@@ -93,6 +132,40 @@ class DeliveryNote(models.Model):
     sync_error_message = models.TextField(blank=True)
     notes = models.TextField(blank=True)
     
+    driver = models.ForeignKey(Driver, on_delete=models.CASCADE, blank=True, null=True)
+    truck = models.ForeignKey(Truck, on_delete=models.CASCADE, blank=True, null=True)
+    trailer1 = models.ForeignKey(Trailer, on_delete=models.CASCADE, related_name='trailer1', blank=True, null=True)
+    trailer2 = models.ForeignKey(Trailer, on_delete=models.CASCADE, related_name='trailer2', blank=True, null=True)
+    qr_code = models.ImageField(upload_to='qr_codes/', blank=True, null=True)
+    
+    def save(self, *args, **kwargs):
+        # Generate QR code if it doesn't exist on save
+        if not self.qr_code or self.pk is None:
+            self.generate_qr_code()
+        super().save(*args, **kwargs)
+
+    def generate_qr_code(self):
+        qr = qrcode.QRCode(
+            version=1,
+            error_correction=qrcode.constants.ERROR_CORRECT_L,
+            box_size=10,
+            border=4,
+        )
+        qr.add_data(self.delivery_note_number)
+        qr.make(fit=True)
+
+        # Create QR code image
+        img = qr.make_image(fill_color="black", back_color="white")
+        
+        # Save to BytesIO
+        buffer = BytesIO()
+        img.save(buffer, format='PNG')
+        buffer.seek(0)
+        
+        # Save to model field
+        filename = f'qr_{self.delivery_note_number}_{self.pk or "new"}.png'
+        self.qr_code.save(filename, File(buffer), save=False)
+        buffer.close()
     def __str__(self):
         return f"{self.delivery_note_number}"
     
@@ -120,3 +193,6 @@ class CompanySettings(models.Model):
     
     def __str__(self):
         return f"{self.company_name} - {self.erp_system}"
+    
+    
+

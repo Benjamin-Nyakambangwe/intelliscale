@@ -1,5 +1,5 @@
 from django import forms
-from .models import Scale, WeighingProcess, Product, DeliveryNote, CompanySettings
+from .models import Scale, WeighingProcess, Product, DeliveryNote, CompanySettings, Driver, Truck, Trailer
 import serial.tools.list_ports
 
 class ScaleForm(forms.ModelForm):
@@ -41,6 +41,11 @@ class ScaleForm(forms.ModelForm):
         fields = [
             'name', 
             'com_port',
+            'baud_rate',
+            'timeout',
+            'parity',
+            'stop_bits',
+            'data_bits',
             'manufacturer',
             'model_number', 
             'max_capacity', 
@@ -53,6 +58,21 @@ class ScaleForm(forms.ModelForm):
                 'class': 'block w-full rounded-md border-zinc-800 shadow-sm focus:border-blue-500 focus:ring-blue-500 sm:text-sm p-2'
             }),
             'com_port': forms.TextInput(attrs={
+                'class': 'block w-full rounded-md border-zinc-300 shadow-sm focus:border-blue-500 focus:ring-blue-500 sm:text-sm p-2'
+            }),
+            'baud_rate': forms.NumberInput(attrs={
+                'class': 'block w-full rounded-md border-zinc-300 shadow-sm focus:border-blue-500 focus:ring-blue-500 sm:text-sm p-2'
+            }),
+            'timeout': forms.NumberInput(attrs={
+                'class': 'block w-full rounded-md border-zinc-300 shadow-sm focus:border-blue-500 focus:ring-blue-500 sm:text-sm p-2'
+            }),
+            'parity': forms.Select(attrs={
+                'class': 'block w-full rounded-md border-zinc-300 shadow-sm focus:border-blue-500 focus:ring-blue-500 sm:text-sm p-2'
+            }),
+            'stop_bits': forms.NumberInput(attrs={
+                'class': 'block w-full rounded-md border-zinc-300 shadow-sm focus:border-blue-500 focus:ring-blue-500 sm:text-sm p-2'
+            }),
+            'data_bits': forms.NumberInput(attrs={
                 'class': 'block w-full rounded-md border-zinc-300 shadow-sm focus:border-blue-500 focus:ring-blue-500 sm:text-sm p-2'
             }),
             'manufacturer': forms.TextInput(attrs={
@@ -90,7 +110,8 @@ class WeighingProcessForm(forms.ModelForm):
             'min_weight',
             'weight_rounding',
             'allow_manual_entry',
-            'is_active'
+            'is_active',
+            'process_type'
         ]
     
     widgets = {
@@ -120,6 +141,9 @@ class WeighingProcessForm(forms.ModelForm):
         }),
         'allow_manual_entry': forms.CheckboxInput(attrs={
             'class': 'h-4 w-4 text-blue-600 border-zinc-300 rounded focus:ring-blue-500'
+        }),
+        'process_type': forms.Select(attrs={
+            'class': 'block w-full rounded-md border-zinc-300 shadow-sm focus:border-blue-500 focus:ring-blue-500 sm:text-sm p-2'
         }),
     }
     
@@ -207,17 +231,18 @@ class DeliveryNoteForm(forms.ModelForm):
         model = DeliveryNote
         fields = [
             'delivery_note_number',
-            'created_by',
             'status',
-            'is_synced',
-            'last_sync_attempt',
-            'sync_error_message',
-            'notes'
+            'notes',
+            'driver',
+            'truck',
+            'trailer1',
+            'trailer2',
         ]
     
     widgets = {
         'delivery_note_number': forms.TextInput(attrs={
-            'class': 'block w-full rounded-md border-zinc-300 shadow-sm focus:border-blue-500 focus:ring-blue-500 sm:text-sm p-2'
+            'class': 'block w-full rounded-md border-zinc-300 shadow-sm focus:border-blue-500 focus:ring-blue-500 sm:text-sm p-2',
+            'placeholder': 'Enter delivery note number'
         }),
         
         'status': forms.Select(attrs={
@@ -225,10 +250,26 @@ class DeliveryNoteForm(forms.ModelForm):
         }),
         
         'notes': forms.Textarea(attrs={
-            'class': 'block w-full rounded-md border-zinc-300 shadow-sm focus:border-blue-500 focus:ring-blue-500 sm:text-sm p-2 h-16'
+            'class': 'block w-full rounded-md border-zinc-300 shadow-sm focus:border-blue-500 focus:ring-blue-500 sm:text-sm p-2',
+            'rows': 3,
+            'placeholder': 'Add any notes or comments...'
         }),
-
-
+        
+        'driver': forms.Select(attrs={
+            'class': 'block w-full rounded-md border-zinc-300 shadow-sm focus:border-blue-500 focus:ring-blue-500 sm:text-sm p-2'
+        }),
+        
+        'truck': forms.Select(attrs={
+            'class': 'block w-full rounded-md border-zinc-300 shadow-sm focus:border-blue-500 focus:ring-blue-500 sm:text-sm p-2'
+        }),
+        
+        'trailer1': forms.Select(attrs={
+            'class': 'block w-full rounded-md border-zinc-300 shadow-sm focus:border-blue-500 focus:ring-blue-500 sm:text-sm p-2'
+        }),
+        
+        'trailer2': forms.Select(attrs={
+            'class': 'block w-full rounded-md border-zinc-300 shadow-sm focus:border-blue-500 focus:ring-blue-500 sm:text-sm p-2'
+        }),
     }
     
     

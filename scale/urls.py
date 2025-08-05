@@ -10,6 +10,7 @@ urlpatterns = [
     path('dashboard/manager/', user_views.manager_dashboard, name='manager_dashboard'),
     path('dashboard/operator/', user_views.operator_dashboard, name='operator_dashboard'),
     path('dashboard/default/', user_views.default_dashboard, name='default_dashboard'),
+    path('analytics/', user_views.analytics_dashboard, name='analytics'),
     
     # Scale management URLs
     path('scales/', views.scale_list, name='scale_list'),
@@ -47,6 +48,8 @@ urlpatterns = [
     path('delivery-notes/<int:pk>/', views.delivery_note_detail, name='delivery_note_detail'),
     path('delivery-notes/<int:pk>/edit/', views.delivery_note_edit, name='delivery_note_edit'),
     path('delivery-notes/<int:pk>/delete/', views.delivery_note_delete, name='delivery_note_delete'),
+    path('delivery-notes/<int:pk>/print/', views.print_delivery_note, name='print_delivery_note'),
+    path('delivery-notes/<int:delivery_note_id>/record/', views.get_delivery_note_record, name='get_delivery_note_record'),
     
     # Weighing Station URLs
     path('weighing-station/', views.weighing_station, name='weighing_station'),

@@ -235,6 +235,24 @@
                     </div>
                 </div>
             </div>
+
+            <div class="bg-white shadow rounded-lg overflow-hidden border border-zinc-200">
+                <div class="px-6 py-5 border-b border-zinc-200">
+                    <h2 class="text-lg font-medium text-zinc-900">DELIVERY NOTE {% if processes.0.process_type == 'WeighBridge' %}<span class="text-red-500 text-sm">(Required)</span>{% endif %}</h2>
+                </div>
+                <div class="p-6">
+                    <div>
+                        <label for="delivery-note-select" class="block text-sm font-medium text-zinc-700 mb-1">Select Delivery Note</label>
+                        <select id="delivery-note-select" name="delivery_note_id" class="block w-full rounded-md border-zinc-300 shadow-sm focus:border-blue-500 focus:ring-blue-500 sm:text-sm p-2" {% if processes.0.process_type == 'WeighBridge' %}required{% endif %}>
+                            <option value="">{% if processes.0.process_type == 'WeighBridge' %}Select a delivery note (required)...{% else %}Select a delivery note (optional)...{% endif %}</option>
+                            {% for note in delivery_notes %}
+                                <option value="{{ note.id }}">{{ note.delivery_note_number }}</option>
+                            {% endfor %}
+                        </select>
+                    </div>
+                </div>
+            </div>
+
             
             <!-- Product Selection Card -->
             <div class="bg-white shadow rounded-lg overflow-hidden border border-zinc-200">
@@ -319,51 +337,7 @@
             </div>
             
             <!-- Delivery Note Card -->
-            <div class="bg-white shadow rounded-lg overflow-hidden border border-zinc-200">
-                <div class="px-6 py-5 border-b border-zinc-200">
-                    <h2 class="text-lg font-medium text-zinc-900">DELIVERY NOTE</h2>
-                </div>
-                <div class="p-6">
-                    <div class="flex items-center space-x-2 mb-4">
-                        <input type="checkbox" id="add-to-delivery-note" name="add_to_delivery_note" class="h-4 w-4 text-blue-600 border-zinc-300 rounded focus:ring-blue-500">
-                        <label for="add-to-delivery-note" class="text-sm font-medium text-zinc-700">Add to delivery note</label>
-                    </div>
-
-                    <div id="delivery-note-selection" class="hidden">
-                        <div class="space-y-4">
-                            <div>
-                                <div class="flex items-center space-x-2 mb-2">
-                                    <input type="radio" id="existing-note" name="note_option" value="existing" class="h-4 w-4 text-blue-600 border-zinc-300 rounded-full focus:ring-blue-500">
-                                    <label for="existing-note" class="text-sm font-medium text-zinc-700">Existing note</label>
-                                </div>
-                                <div id="existing-note-container" class="pl-6 hidden">
-                                    <select id="delivery-note-select" name="delivery_note_id" class="block w-full rounded-md border-zinc-300 shadow-sm focus:border-blue-500 focus:ring-blue-500 sm:text-sm p-2">
-                                        <option value="">Select a delivery note...</option>
-                                        {% for note in delivery_notes %}
-                                            <option value="{{ note.id }}">{{ note.delivery_note_number }}</option>
-                                        {% endfor %}
-                                    </select>
-                                </div>
-                            </div>
-                            
-                            <div>
-                                <div class="flex items-center space-x-2 mb-2">
-                                    <input type="radio" id="new-note" name="note_option" value="new" class="h-4 w-4 text-blue-600 border-zinc-300 rounded-full focus:ring-blue-500">
-                                    <label for="new-note" class="text-sm font-medium text-zinc-700">Create new note</label>
-                                </div>
-                                <div id="new-note-container" class="pl-6 hidden">
-                                    <input type="text" id="new-note-number" name="new_note_number" class="block w-full rounded-md border-zinc-300 shadow-sm focus:border-blue-500 focus:ring-blue-500 sm:text-sm p-2 mb-2" placeholder="Enter note number">
-                                    <select id="new-note-status" name="new_note_status" class="block w-full rounded-md border-zinc-300 shadow-sm focus:border-blue-500 focus:ring-blue-500 sm:text-sm p-2">
-                                        <option value="draft">Draft</option>
-                                        <option value="confirmed">Confirmed</option>
-                                        <option value="cancelled">Cancelled</option>
-                                    </select>
-                                </div>
-                            </div>
-                        </div>
-                    </div>
-                </div>
-            </div>
+            
             
             <!-- Recent Records Card -->
             {% comment %} <div class="bg-white shadow rounded-lg overflow-hidden border border-zinc-200">
@@ -422,7 +396,9 @@
         const customFieldsContainer = document.getElementById('custom-fields-container');
 
         const activeProcessId = document.getElementById('process-id-input').value;
+        const processType = '{{ processes.0.process_type|default:"" }}';
         console.log('Active process ID:', activeProcessId);
+        console.log('Process type:', processType);
         
         // Parse process custom fields data from the template
         const processCustomFields = JSON.parse('{{ process_custom_fields|escapejs }}');
@@ -511,33 +487,75 @@
             });
         });
 
-        // Toggle delivery note section
-        const addToDeliveryNoteCheckbox = document.getElementById('add-to-delivery-note');
-        const deliveryNoteSelection = document.getElementById('delivery-note-selection');
+        // Handle delivery note selection
+        const deliveryNoteSelect = document.getElementById('delivery-note-select');
         
-        addToDeliveryNoteCheckbox.addEventListener('change', function() {
-            deliveryNoteSelection.classList.toggle('hidden', !this.checked);
-        });
-        
-        // Toggle between existing and new delivery note options
-        const existingNoteRadio = document.getElementById('existing-note');
-        const newNoteRadio = document.getElementById('new-note');
-        const existingNoteContainer = document.getElementById('existing-note-container');
-        const newNoteContainer = document.getElementById('new-note-container');
-        
-        existingNoteRadio.addEventListener('change', function() {
-            if (this.checked) {
-                existingNoteContainer.classList.remove('hidden');
-                newNoteContainer.classList.add('hidden');
+        deliveryNoteSelect.addEventListener('change', function() {
+            if (processType === 'WeighBridge' && this.value) {
+                fetchDeliveryNoteRecord(this.value);
+            } else if (!this.value) {
+                // Clear barcode lock when no delivery note selected
+                document.getElementById('barcode-input').readOnly = false;
+                document.getElementById('barcode-input').classList.remove('bg-gray-100');
+                document.getElementById('barcode-input').value = '';
             }
         });
-        
-        newNoteRadio.addEventListener('change', function() {
-            if (this.checked) {
-                newNoteContainer.classList.remove('hidden');
-                existingNoteContainer.classList.add('hidden');
-            }
-        });
+
+        // Function to fetch existing record data for weighbridge
+        function fetchDeliveryNoteRecord(deliveryNoteId) {
+            $.ajax({
+                url: "{% url 'scale:get_delivery_note_record' 0 %}".replace('0', deliveryNoteId),
+                type: 'GET',
+                headers: {
+                    'X-CSRFToken': '{{ csrf_token }}'
+                },
+                success: function(data) {
+                    if (data.success) {
+                        if (data.multiple_records) {
+                            alert('Error: This delivery note has multiple weighing records. Please contact administrator.');
+                            deliveryNoteSelect.value = '';
+                            return;
+                        }
+                        
+                        if (data.record) {
+                            // Populate barcode and lock it
+                            document.getElementById('barcode-input').value = data.record.barcode || '';
+                            document.getElementById('barcode-input').readOnly = true;
+                            document.getElementById('barcode-input').classList.add('bg-gray-100');
+                            
+                            // Populate custom fields
+                            if (data.record.custom_data) {
+                                populateCustomFields(data.record.custom_data);
+                            }
+                        } else {
+                            // No existing record, unlock barcode
+                            document.getElementById('barcode-input').readOnly = false;
+                            document.getElementById('barcode-input').classList.remove('bg-gray-100');
+                        }
+                    }
+                },
+                error: function(xhr, status, error) {
+                    console.log('Error fetching delivery note record:', error);
+                }
+            });
+        }
+
+        // Function to populate custom fields from existing record
+        function populateCustomFields(customData) {
+            Object.keys(customData).forEach(fieldName => {
+                const input = document.querySelector(`[name="custom_field_${fieldName}"]`);
+                if (input) {
+                    if (input.type === 'checkbox') {
+                        input.checked = customData[fieldName] === 'true' || customData[fieldName] === true;
+                    } else if (input.type === 'radio') {
+                        const radioInput = document.querySelector(`[name="custom_field_${fieldName}"][value="${customData[fieldName]}"]`);
+                        if (radioInput) radioInput.checked = true;
+                    } else {
+                        input.value = customData[fieldName];
+                    }
+                }
+            });
+        }
         
         // Calculate net weight when tare weight changes
         const grossWeightInput = document.getElementById('gross-weight');
@@ -716,6 +734,7 @@
                         break;
                         
                     case 'select':
+                    case 'enum':
                         input = document.createElement('select');
                         input.className = 'block w-full rounded-md border-zinc-300 shadow-sm focus:border-blue-500 focus:ring-blue-500 sm:text-sm p-2';
                         input.id = fieldId;
@@ -729,7 +748,7 @@
                         // Add placeholder option
                         const placeholderOption = document.createElement('option');
                         placeholderOption.value = '';
-                        placeholderOption.textContent = 'Select an option...';
+                        placeholderOption.textContent = field.placeholder || 'Select an option...';
                         placeholderOption.disabled = required;
                         placeholderOption.selected = true;
                         input.appendChild(placeholderOption);
@@ -738,8 +757,18 @@
                         if (field.options && Array.isArray(field.options)) {
                             field.options.forEach(option => {
                                 const optionElement = document.createElement('option');
-                                optionElement.value = option.value || option;
-                                optionElement.textContent = option.label || option;
+                                // Handle both string options and object options with value/label
+                                if (typeof option === 'string') {
+                                    optionElement.value = option;
+                                    optionElement.textContent = option;
+                                } else if (option && typeof option === 'object') {
+                                    optionElement.value = option.value || option.label || option;
+                                    optionElement.textContent = option.label || option.value || option;
+                                    // Add data attributes for additional metadata
+                                    if (option.description) {
+                                        optionElement.title = option.description;
+                                    }
+                                }
                                 input.appendChild(optionElement);
                             });
                         }
@@ -955,9 +984,8 @@
             // Reset current process display
             document.getElementById('current-process-display').textContent = 'None selected';
             
-            // Reset delivery note section
-            addToDeliveryNoteCheckbox.checked = false;
-            deliveryNoteSelection.classList.add('hidden');
+            // Reset delivery note selection
+            deliveryNoteSelect.selectedIndex = 0;
             
             // Clear custom fields
             const customInputs = customFieldsContainer.querySelectorAll('input, select, textarea');
@@ -1048,16 +1076,11 @@
                 }
             }
             
-            // If delivery note option is selected, validate those options
-            if (addToDeliveryNoteCheckbox.checked) {
-                if (existingNoteRadio.checked && !document.getElementById('delivery-note-select').value) {
-                    alert('Please select a delivery note');
-                    event.preventDefault();
-                    return;
-                }
-                
-                if (newNoteRadio.checked && !document.getElementById('new-note-number').value) {
-                    alert('Please enter a delivery note number');
+            // For weighbridge, delivery note is mandatory
+            if (processType === 'WeighBridge') {
+                if (!document.getElementById('delivery-note-select').value) {
+                    alert('Please select a delivery note (required for WeighBridge)');
+                    document.getElementById('delivery-note-select').focus();
                     event.preventDefault();
                     return;
                 }

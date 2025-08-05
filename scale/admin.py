@@ -1,5 +1,5 @@
 from django.contrib import admin
-from .models import Scale, WeighingProcess, Product, DeliveryNote, WeighingRecord, ErpSystem, CompanySettings
+from .models import Scale, WeighingProcess, Product, DeliveryNote, WeighingRecord, ErpSystem, CompanySettings, Driver, Truck, Trailer
 
 
 class ScaleAdmin(admin.ModelAdmin):
@@ -63,3 +63,28 @@ class CompanySettingsAdmin(admin.ModelAdmin):
     list_per_page = 20
 
 admin.site.register(CompanySettings, CompanySettingsAdmin)
+
+
+
+class DriverAdmin(admin.ModelAdmin):
+    list_display = ('name', 'phone', 'created_at', 'updated_at')
+    search_fields = ('name', 'phone')
+    list_per_page = 20
+    
+admin.site.register(Driver, DriverAdmin)
+
+
+class TruckAdmin(admin.ModelAdmin):
+    list_display = ('brand', 'license_plate', 'color', 'created_at', 'updated_at')
+    search_fields = ('brand', 'license_plate', 'color')
+    list_per_page = 20
+
+admin.site.register(Truck, TruckAdmin)
+
+
+class TrailerAdmin(admin.ModelAdmin):
+    list_display = ('brand', 'license_plate', 'color', 'created_at', 'updated_at')
+    search_fields = ('brand', 'license_plate', 'color')
+    list_per_page = 20
+    
+admin.site.register(Trailer, TrailerAdmin)

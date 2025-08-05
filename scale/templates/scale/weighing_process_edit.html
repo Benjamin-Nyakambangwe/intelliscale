@@ -57,17 +57,18 @@
                         {% endif %}
                     </div>
 
-                    <!-- Description -->
+                    <!-- Process Type -->
                     <div>
-                        <label for="{{ form.description.id_for_label }}" class="block text-sm font-medium text-zinc-700">Description</label>
+                        <label for="{{ form.process_type.id_for_label }}" class="block text-sm font-medium text-zinc-700">Process Type</label>
                         <div class="mt-1">
-                            {{ form.description }}
+                            {{ form.process_type }}
                         </div>
-                        {% if form.description.errors %}
-                            <p class="mt-2 text-sm text-red-600">{{ form.description.errors }}</p>
+                        {% if form.process_type.errors %}
+                            <p class="mt-2 text-sm text-red-600">{{ form.process_type.errors }}</p>
                         {% endif %}
-                        <p class="mt-1 text-xs text-zinc-500">Provide a detailed description of this weighing process.</p>
                     </div>
+
+                   
 
                     <!-- ERP Target Model -->
                     <div>
@@ -150,6 +151,18 @@
                         {% if form.is_active.errors %}
                             <p class="mt-2 text-sm text-red-600">{{ form.is_active.errors }}</p>
                         {% endif %}
+                    </div>
+
+                     <!-- Description -->
+                     <div>
+                        <label for="{{ form.description.id_for_label }}" class="block text-sm font-medium text-zinc-700">Description</label>
+                        <div class="mt-1">
+                            {{ form.description }}
+                        </div>
+                        {% if form.description.errors %}
+                            <p class="mt-2 text-sm text-red-600">{{ form.description.errors }}</p>
+                        {% endif %}
+                        <p class="mt-1 text-xs text-zinc-500">Provide a detailed description of this weighing process.</p>
                     </div>
 
                     <!-- Metadata (Read-only) -->

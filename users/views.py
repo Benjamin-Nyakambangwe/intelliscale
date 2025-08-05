@@ -65,6 +65,25 @@ def operator_dashboard(request):
 def default_dashboard(request):
     return render(request, 'scale/default_dashboard.html', {'username': request.user.username})
 
+@login_required
+def analytics_dashboard(request):
+    # Calculate analytics data (you can make these dynamic later)
+    context = {
+        'synced_records': 45,
+        'pending_records': 12,
+        'failed_records': 3,
+        'completed_notes': 28,
+        'draft_notes': 15,
+        'cancelled_notes': 7,
+        'online_scales': 8,
+        'offline_scales': 2,
+        'maintenance_scales': 1,
+        'todays_records': 23,
+        'active_notes': 15,
+        'connected_scales': 8,
+    }
+    return render(request, 'scale/analytics.html', context)
+
 
 # --- User Management Views ---
 class AdminRequiredMixin(LoginRequiredMixin, UserPassesTestMixin):
