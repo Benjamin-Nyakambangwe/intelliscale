@@ -1,5 +1,5 @@
 from django import forms
-from .models import Scale, WeighingProcess, Product, DeliveryNote, CompanySettings, Driver, Truck, Trailer
+from .models import Scale, WeighingProcess, Product, DeliveryNote, CompanySettings, Driver, Truck, Trailer  
 import serial.tools.list_ports
 
 class ScaleForm(forms.ModelForm):
@@ -51,7 +51,8 @@ class ScaleForm(forms.ModelForm):
             'max_capacity', 
             'is_active',
             'last_connection_status',
-            'last_seen'
+            'last_seen',
+            'tare_weight'
         ]
         widgets = {
             'name': forms.TextInput(attrs={
@@ -92,6 +93,9 @@ class ScaleForm(forms.ModelForm):
             }),
             'last_seen': forms.DateTimeInput(attrs={
                 'type': 'datetime-local',
+                'class': 'block w-full rounded-md border-zinc-300 shadow-sm focus:border-blue-500 focus:ring-blue-500 sm:text-sm p-2'
+            }),
+            'tare_weight': forms.NumberInput(attrs={
                 'class': 'block w-full rounded-md border-zinc-300 shadow-sm focus:border-blue-500 focus:ring-blue-500 sm:text-sm p-2'
             }),
         }
@@ -181,7 +185,8 @@ class ProductForm(forms.ModelForm):
             'name',
             'description',
             'erp_product_id',
-            'is_active'
+            'is_active',
+            'tare_weight'
         ]
         
         widgets = {
@@ -196,6 +201,9 @@ class ProductForm(forms.ModelForm):
             }),
             'is_active': forms.CheckboxInput(attrs={
                 'class': 'h-4 w-4 text-blue-600 border-zinc-300 rounded focus:ring-blue-500'
+            }),
+            'tare_weight': forms.NumberInput(attrs={
+                'class': 'block w-full rounded-md border-zinc-300 shadow-sm focus:border-blue-500 focus:ring-blue-500 sm:text-sm p-2'
             }),
         }
         
@@ -230,21 +238,16 @@ class DeliveryNoteForm(forms.ModelForm):
     class Meta:
         model = DeliveryNote
         fields = [
-            'delivery_note_number',
             'status',
             'notes',
             'driver',
             'truck',
             'trailer1',
             'trailer2',
+            'product'
         ]
     
     widgets = {
-        'delivery_note_number': forms.TextInput(attrs={
-            'class': 'block w-full rounded-md border-zinc-300 shadow-sm focus:border-blue-500 focus:ring-blue-500 sm:text-sm p-2',
-            'placeholder': 'Enter delivery note number'
-        }),
-        
         'status': forms.Select(attrs={
             'class': 'block w-full rounded-md border-zinc-300 shadow-sm focus:border-blue-500 focus:ring-blue-500 sm:text-sm p-2'
         }),
@@ -268,6 +271,10 @@ class DeliveryNoteForm(forms.ModelForm):
         }),
         
         'trailer2': forms.Select(attrs={
+            'class': 'block w-full rounded-md border-zinc-300 shadow-sm focus:border-blue-500 focus:ring-blue-500 sm:text-sm p-2'
+        }),
+        
+        'product': forms.Select(attrs={
             'class': 'block w-full rounded-md border-zinc-300 shadow-sm focus:border-blue-500 focus:ring-blue-500 sm:text-sm p-2'
         }),
     }
@@ -313,8 +320,59 @@ class CompanySettingsForm(forms.ModelForm):
                 'class': 'h-4 w-4 text-blue-600 border-zinc-300 rounded focus:ring-blue-500'
             }),
         }
-    
-    
-    
-    
-    
+
+
+class DriverForm(forms.ModelForm):
+    class Meta:
+        model = Driver
+        fields = ['name', 'phone']
+        widgets = {
+            'name': forms.TextInput(attrs={
+                'class': 'block w-full rounded-md border-zinc-300 shadow-sm focus:border-blue-500 focus:ring-blue-500 sm:text-sm p-2',
+                'placeholder': 'Enter driver name'
+            }),
+            'phone': forms.TextInput(attrs={
+                'class': 'block w-full rounded-md border-zinc-300 shadow-sm focus:border-blue-500 focus:ring-blue-500 sm:text-sm p-2',
+                'placeholder': 'Enter phone number (optional)'
+            }),
+        }
+
+
+class TruckForm(forms.ModelForm):
+    class Meta:
+        model = Truck
+        fields = ['brand', 'license_plate', 'color']
+        widgets = {
+            'brand': forms.TextInput(attrs={
+                'class': 'block w-full rounded-md border-zinc-300 shadow-sm focus:border-blue-500 focus:ring-blue-500 sm:text-sm p-2',
+                'placeholder': 'Enter truck brand'
+            }),
+            'license_plate': forms.TextInput(attrs={
+                'class': 'block w-full rounded-md border-zinc-300 shadow-sm focus:border-blue-500 focus:ring-blue-500 sm:text-sm p-2',
+                'placeholder': 'Enter truck license plate'
+            }),
+            'color': forms.TextInput(attrs={
+                'class': 'block w-full rounded-md border-zinc-300 shadow-sm focus:border-blue-500 focus:ring-blue-500 sm:text-sm p-2',
+                'placeholder': 'Enter truck color'
+            }),
+        }
+        
+
+class TrailerForm(forms.ModelForm):
+    class Meta:
+        model = Trailer
+        fields = ['brand', 'license_plate', 'color']
+        widgets = {
+            'brand': forms.TextInput(attrs={
+                'class': 'block w-full rounded-md border-zinc-300 shadow-sm focus:border-blue-500 focus:ring-blue-500 sm:text-sm p-2',
+                'placeholder': 'Enter trailer brand'
+            }),
+            'license_plate': forms.TextInput(attrs={
+                'class': 'block w-full rounded-md border-zinc-300 shadow-sm focus:border-blue-500 focus:ring-blue-500 sm:text-sm p-2',
+                'placeholder': 'Enter trailer license plate'
+            }),
+            'color': forms.TextInput(attrs={
+                'class': 'block w-full rounded-md border-zinc-300 shadow-sm focus:border-blue-500 focus:ring-blue-500 sm:text-sm p-2',
+                'placeholder': 'Enter trailer color'
+            }),
+        }

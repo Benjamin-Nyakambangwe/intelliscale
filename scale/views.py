@@ -3,8 +3,8 @@ from django.contrib.auth.decorators import login_required, user_passes_test
 from django.contrib import messages
 from django.http import HttpResponseForbidden, JsonResponse
 from users.views import is_admin 
-from .models import Scale, WeighingProcess, Product, DeliveryNote, WeighingRecord, CompanySettings
-from .forms import ScaleForm, WeighingProcessForm, ProductForm, DeliveryNoteForm, CompanySettingsForm
+from .models import Scale, WeighingProcess, Product, DeliveryNote, WeighingRecord, CompanySettings, Driver, Truck, Trailer
+from .forms import ScaleForm, WeighingProcessForm, ProductForm, DeliveryNoteForm, CompanySettingsForm, DriverForm, TruckForm, TrailerForm
 import serial
 import serial.tools.list_ports
 from django.utils import timezone
@@ -194,69 +194,69 @@ def get_weight(request, scale_id):
     if request.method == 'POST':
         print(f"Getting weight for scale {scale_id}")
         
-        # weight = random.randint(20, 150)
-        # return JsonResponse({
-        #     'success': True,
-        #     'weight': weight
-        # })
+        weight = random.randint(500, 2000)
+        return JsonResponse({
+            'success': True,
+            'weight': weight
+        })
         
-        try:
-            scale = get_object_or_404(Scale, pk=scale_id)
+    #     try:
+    #         scale = get_object_or_404(Scale, pk=scale_id)
             
-            # Check if scale is connected
-            if scale.last_connection_status != "connected":
-                return JsonResponse({
-                    'success': False,
-                    # 'message': 'Scale is not connected. Please connect the scale first.'
-                })
+    #         # Check if scale is connected
+    #         if scale.last_connection_status != "connected":
+    #             return JsonResponse({
+    #                 'success': False,
+    #                 # 'message': 'Scale is not connected. Please connect the scale first.'
+    #             })
             
-            # Try to read from the scale
-            ser = None
-            try:
-                ser = serial.Serial(scale.com_port, 9600, timeout=2)
-                if ser.is_open:
-                    # Send command to get weight (this may vary by scale model)
-                    ser.write(b"\r\n")  # Some scales need a CR/LF to trigger reading
-                    # Read response
-                    line = ser.readline()
-                    # weight_str = line.decode(errors='ignore').strip()
-                    weight_str = line.decode('utf-8')[7: 14].strip()
+    #         # Try to read from the scale
+    #         ser = None
+    #         try:
+    #             ser = serial.Serial(scale.com_port, 9600, timeout=2)
+    #             if ser.is_open:
+    #                 # Send command to get weight (this may vary by scale model)
+    #                 ser.write(b"\r\n")  # Some scales need a CR/LF to trigger reading
+    #                 # Read response
+    #                 line = ser.readline()
+    #                 # weight_str = line.decode(errors='ignore').strip()
+    #                 weight_str = line.decode('utf-8')[7: 14].strip()
 
-                    print('Weight String: ', weight_str)
+    #                 print('Weight String: ', weight_str)
                     
-                    # Parse weight (this parsing logic may need to be adjusted based on your scale's output format)
-                    try:
-                        weight_str = weight_str.replace(',', '')
-                        weight = float(weight_str)
-                        return JsonResponse({
-                            'success': True,
-                            'weight': weight
-                        })
-                    except ValueError:
-                        return JsonResponse({
-                            'success': False,
-                            'message': f'Could not parse weight value from scale: {weight_str}'
-                        })
+    #                 # Parse weight (this parsing logic may need to be adjusted based on your scale's output format)
+    #                 try:
+    #                     weight_str = weight_str.replace(',', '')
+    #                     weight = float(weight_str)
+    #                     return JsonResponse({
+    #                         'success': True,
+    #                         'weight': weight
+    #                     })
+    #                 except ValueError:
+    #                     return JsonResponse({
+    #                         'success': False,
+    #                         'message': f'Could not parse weight value from scale: {weight_str}'
+    #                     })
                         
-            except serial.SerialException as e:
-                return JsonResponse({
-                    'success': False,
-                    'message': f'Error reading from scale: {str(e)}'
-                })
-            finally:
-                if ser and ser.is_open:
-                    ser.close()
+    #         except serial.SerialException as e:
+    #             return JsonResponse({
+    #                 'success': False,
+    #                 'message': f'Error reading from scale: {str(e)}'
+    #             })
+    #         finally:
+    #             if ser and ser.is_open:
+    #                 ser.close()
                     
-        except Exception as e:
-            return JsonResponse({
-                'success': False,
-                'message': str(e)
-            })
+    #     except Exception as e:
+    #         return JsonResponse({
+    #             'success': False,
+    #             'message': str(e)
+    #         })
     
-    return JsonResponse({
-        'success': False,
-        'message': 'Only POST requests are allowed.'
-    })
+    # return JsonResponse({
+    #     'success': False,
+    #     'message': 'Only POST requests are allowed.'
+    # })
 
 
 
@@ -326,7 +326,12 @@ def weighing_station(request):
     scales = Scale.objects.filter(is_active=True).order_by('name')
     products = Product.objects.filter(is_active=True).order_by('name')
     processes = WeighingProcess.objects.filter(is_active=True).order_by('name')
-    delivery_notes = DeliveryNote.objects.all().order_by('-created_at')[:20]  # Get the 20 most recent delivery notes
+    delivery_notes = DeliveryNote.objects.filter(status='Open').order_by('-created_at')[:20]  # Get the 20 most recent open delivery notes
+    
+    # Get data for delivery note creation modal
+    drivers = Driver.objects.all().order_by('name')
+    trucks = Truck.objects.all().order_by('license_plate')
+    trailers = Trailer.objects.all().order_by('license_plate')
     
     #Get Min and Max Weights from active process
     min_weight = None
@@ -424,7 +429,12 @@ def weighing_station(request):
                     existing_record.notes = notes if notes else existing_record.notes  # Update notes if provided
                     existing_record.save()
                     weighing_record = existing_record
-                    messages.success(request, f'Tare weight updated for existing weighing record in delivery note {delivery_note.delivery_note_number}.')
+                    
+                    # Close the delivery note after second weighing (tare) is complete
+                    delivery_note.status = 'Closed'
+                    delivery_note.save()
+                    
+                    messages.success(request, f'Tare weight updated for existing weighing record in delivery note {delivery_note.delivery_note_number}. Delivery note has been closed.')
                 else:
                     # Create new record as normal (first weighing - gross weight)
                     weighing_record = WeighingRecord.objects.create(
@@ -489,6 +499,9 @@ def weighing_station(request):
         'products': products,
         'processes': processes,
         'delivery_notes': delivery_notes,
+        'drivers': drivers,
+        'trucks': trucks,
+        'trailers': trailers,
         'process_custom_fields': json.dumps(process_custom_fields),
         'unsynced_count': WeighingRecord.objects.filter(is_synced=False).count(),
         'allow_manual_entry': allow_manual_entry
@@ -743,6 +756,27 @@ def delivery_note_detail(request, pk):
         'weighing_records': weighing_records
     })
 
+def generate_delivery_note_number():
+    """Generate next delivery note number in format SDN-0001, SDN-0002, etc."""
+    # Get the latest delivery note with SDN prefix
+    latest_note = DeliveryNote.objects.filter(
+        delivery_note_number__startswith='SDN-'
+    ).order_by('delivery_note_number').last()
+    
+    if latest_note:
+        # Extract the number part and increment
+        try:
+            number_part = latest_note.delivery_note_number.split('-')[1]
+            next_number = int(number_part) + 1
+        except (IndexError, ValueError):
+            # If there's an issue parsing, start from 1
+            next_number = 1
+    else:
+        # No existing delivery notes with SDN prefix
+        next_number = 1
+    
+    return f"SDN-{next_number:04d}"
+
 @login_required
 @user_passes_test(is_admin)
 def delivery_note_create(request):
@@ -751,6 +785,8 @@ def delivery_note_create(request):
         if form.is_valid():
             delivery_note = form.save(commit=False)
             delivery_note.created_by = request.user
+            # Generate automatic delivery note number
+            delivery_note.delivery_note_number = generate_delivery_note_number()
             delivery_note.save()
             messages.success(request, f'Delivery Note {delivery_note.delivery_note_number} was created successfully.')
             return redirect('scale:delivery_note_list')
@@ -1408,8 +1444,8 @@ def print_delivery_note(request, pk):
             ('FONTSIZE', (0, 0), (-1, 0), 9),
             ('TOPPADDING', (0, 0), (-1, 0), 12),
             ('BOTTOMPADDING', (0, 0), (-1, 0), 12),
-            
-            # Data rows styling
+             
+             # Data rows styling
             ('BACKGROUND', (0, 1), (-1, -1), colors.white),
             ('TEXTCOLOR', (0, 1), (-1, -1), colors.HexColor('#374151')),
             ('ALIGN', (0, 1), (-1, -1), 'CENTER'),
@@ -1489,18 +1525,186 @@ def get_delivery_note_record(request, delivery_note_id):
                     'gross_weight': float(record.gross_weight),
                     'tare_weight': float(record.tare_weight),
                     'net_weight': float(record.net_weight)
-                }
+                },
+                'product': {
+                    'id': record.product.id,
+                    'name': record.product.name
+                } if record.product else None
             })
         
-        # No records found
+        # No records found - check if delivery note has a product
+        delivery_note_product = None
+        if hasattr(delivery_note, 'product') and delivery_note.product:
+            delivery_note_product = {
+                'id': delivery_note.product.id,
+                'name': delivery_note.product.name
+            }
+        
         return JsonResponse({
             'success': True,
             'multiple_records': False,
-            'record': None
+            'record': None,
+            'product': delivery_note_product
         })
         
     except Exception as e:
         return JsonResponse({
             'success': False,
             'message': str(e)
+        })
+
+@login_required
+def driver_create_ajax(request):
+    """Create a new driver via AJAX request"""
+    if request.method != 'POST':
+        return JsonResponse({'success': False, 'message': 'Only POST requests allowed'})
+    
+    try:
+        form = DriverForm(request.POST)
+        if form.is_valid():
+            driver = form.save()
+            return JsonResponse({
+                'success': True,
+                'driver': {
+                    'id': driver.id,
+                    'name': driver.name,
+                    'phone': driver.phone or ''
+                },
+                'message': f'Driver "{driver.name}" created successfully'
+            })
+        else:
+            # Return form errors
+            errors = {}
+            for field, error_list in form.errors.items():
+                errors[field] = error_list[0] if error_list else ''
+            return JsonResponse({
+                'success': False,
+                'errors': errors,
+                'message': 'Please correct the errors below'
+            })
+    except Exception as e:
+        return JsonResponse({
+            'success': False,
+            'message': f'Error creating driver: {str(e)}'
+        })  
+        
+        
+
+@login_required
+def truck_create_ajax(request):
+    """Create a new truck via AJAX request"""
+    if request.method != 'POST':
+        return JsonResponse({'success': False, 'message': 'Only POST requests allowed'})
+    
+    try:
+        form = TruckForm(request.POST)
+        if form.is_valid():
+            truck = form.save()
+            return JsonResponse({
+                'success': True,
+                'truck': {
+                    'id': truck.id,
+                    'brand': truck.brand,
+                    'license_plate': truck.license_plate,
+                    'color': truck.color
+                },
+                'message': f'Truck "{truck.license_plate}" created successfully'
+            })
+        else:
+            # Return form errors
+            errors = {}
+            for field, error_list in form.errors.items():
+                errors[field] = error_list[0] if error_list else ''
+            return JsonResponse({
+                'success': False,
+                'errors': errors,
+                'message': 'Please correct the errors below'
+            })
+    except Exception as e:
+        return JsonResponse({
+            'success': False,
+            'message': f'Error creating truck: {str(e)}'
+        })
+        
+        
+
+@login_required
+def trailer_create_ajax(request):
+    """Create a new trailer via AJAX request"""
+    if request.method != 'POST':
+        return JsonResponse({'success': False, 'message': 'Only POST requests allowed'})
+    
+    try:
+        form = TrailerForm(request.POST)
+        if form.is_valid():
+            trailer = form.save()
+            return JsonResponse({
+                'success': True,
+                'trailer': {
+                    'id': trailer.id,
+                    'brand': trailer.brand,
+                    'license_plate': trailer.license_plate,
+                    'color': trailer.color
+                },
+                'message': f'Trailer "{trailer.license_plate}" created successfully'
+            })
+        else:
+            # Return form errors
+            errors = {}
+            for field, error_list in form.errors.items():
+                errors[field] = error_list[0] if error_list else ''
+            return JsonResponse({
+                'success': False,
+                'errors': errors,
+                'message': 'Please correct the errors below'
+            })
+    except Exception as e:
+        return JsonResponse({
+            'success': False,
+            'message': f'Error creating trailer: {str(e)}'
+        })
+
+@login_required
+def delivery_note_create_ajax(request):
+    """Create a new delivery note via AJAX request"""
+    if request.method != 'POST':
+        return JsonResponse({'success': False, 'message': 'Only POST requests allowed'})
+    
+    try:
+        form = DeliveryNoteForm(request.POST)
+        if form.is_valid():
+            delivery_note = form.save(commit=False)
+            delivery_note.created_by = request.user
+            # Generate automatic delivery note number
+            delivery_note.delivery_note_number = generate_delivery_note_number()
+            delivery_note.save()
+            return JsonResponse({
+                'success': True,
+                'delivery_note': {
+                    'id': delivery_note.id,
+                    'delivery_note_number': delivery_note.delivery_note_number,
+                    'status': delivery_note.status,
+                    'driver': delivery_note.driver.name if delivery_note.driver else None,
+                    'truck': delivery_note.truck.license_plate if delivery_note.truck else None,
+                    'trailer1': delivery_note.trailer1.license_plate if delivery_note.trailer1 else None,
+                    'trailer2': delivery_note.trailer2.license_plate if delivery_note.trailer2 else None,
+                    'product': delivery_note.product.name if delivery_note.product else None,
+                    'notes': delivery_note.notes
+                },
+                'message': f'Delivery note "{delivery_note.delivery_note_number}" created successfully'
+            })
+        else:
+            # Return form errors
+            errors = {}
+            for field, error_list in form.errors.items():
+                errors[field] = error_list[0] if error_list else ''
+            return JsonResponse({
+                'success': False,
+                'errors': errors,
+                'message': 'Please correct the errors below'
+            })
+    except Exception as e:
+        return JsonResponse({
+            'success': False,
+            'message': f'Error creating delivery note: {str(e)}'
         })

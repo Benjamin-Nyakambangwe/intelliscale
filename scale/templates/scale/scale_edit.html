@@ -128,7 +128,18 @@
                 {% endif %}
             </div>
 
-            <!-- Connection Status -->
+            <!-- Tare Weight -->
+            <div>
+                <label for="{{ form.tare_weight.id_for_label }}" class="block text-sm font-medium text-zinc-700">Tare Weight</label>
+                <div class="mt-1">
+                    {{ form.tare_weight }}
+                </div>
+                {% if form.tare_weight.errors %}
+                    <p class="mt-2 text-sm text-red-600">{{ form.tare_weight.errors }}</p>
+                {% endif %}
+            </div>
+
+            {% comment %} <!-- Connection Status -->
             <div>
                 <label for="{{ form.last_connection_status.id_for_label }}" class="block text-sm font-medium text-zinc-700">Connection Status</label>
                 <div class="mt-1">
@@ -137,7 +148,7 @@
                 {% if form.last_connection_status.errors %}
                     <p class="mt-2 text-sm text-red-600">{{ form.last_connection_status.errors }}</p>
                 {% endif %}
-            </div>
+            </div> {% endcomment %}
 
             <!-- Status -->
             <div>

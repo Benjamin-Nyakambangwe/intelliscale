@@ -1,26 +1,8 @@
-<!DOCTYPE html>
-<html>
-<head>
-    <title>Weighing Process Management | IntelliScale</title>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <link rel="preconnect" href="https://fonts.googleapis.com">
-    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
-    <script src="https://cdn.tailwindcss.com"></script>
-    <script>
-        tailwind.config = {
-            theme: {
-                extend: {
-                    fontFamily: {
-                        sans: ['Inter', 'sans-serif'],
-                    },
-                }
-            }
-        }
-    </script>
-</head>
-<body class="bg-zinc-50 min-h-screen">
+{% extends "scale/base.html" %}
+
+{% block title %}Weighing Process Management | IntelliScale{% endblock %}
+
+{% block content %}
     <div class="max-w-7xl mx-auto py-6 px-4 sm:px-6 lg:px-8">
         <div class="flex justify-between items-center mb-6">
             <div class="flex items-center">
@@ -111,5 +93,4 @@
             </div>
         </div>
     </div>
-</body>
-</html>
+{% endblock %}

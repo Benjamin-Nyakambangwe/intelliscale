@@ -17,10 +17,11 @@ class Scale(models.Model):
     model_number = models.CharField(max_length=50, blank=True, null=True)
     max_capacity = models.DecimalField(max_digits=10, decimal_places=2, blank=True, null=True, help_text="Maximum weight capacity in kg")
     is_active = models.BooleanField(default=True)
-    last_connection_status = models.CharField(max_length=50, default='disconnected')
+    last_connection_status = models.CharField(max_length=50, default='disconnected', blank=True, null=True)
     last_seen = models.DateTimeField(null=True, blank=True)
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
+    tare_weight = models.DecimalField(max_digits=10, decimal_places=2, blank=True, null=True)
     
     def __str__(self):
         return f"{self.name} ({self.model_number})"
@@ -59,6 +60,7 @@ class Product(models.Model):
     is_active = models.BooleanField(default=False)
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
+    tare_weight = models.DecimalField(max_digits=10, decimal_places=2, blank=True, null=True)
     
     def __str__(self):
         return self.name
@@ -137,6 +139,7 @@ class DeliveryNote(models.Model):
     trailer1 = models.ForeignKey(Trailer, on_delete=models.CASCADE, related_name='trailer1', blank=True, null=True)
     trailer2 = models.ForeignKey(Trailer, on_delete=models.CASCADE, related_name='trailer2', blank=True, null=True)
     qr_code = models.ImageField(upload_to='qr_codes/', blank=True, null=True)
+    product = models.ForeignKey(Product, on_delete=models.CASCADE, blank=True, null=True)
     
     def save(self, *args, **kwargs):
         # Generate QR code if it doesn't exist on save

@@ -66,9 +66,9 @@
                 </div>
                 <div class="p-6 flex-grow overflow-auto">
                     <!-- Weighing Data Section -->
-                    <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+                    <div class="grid grid-cols-1 md:grid-cols-2 gap-6 hidden">
                         <div>
-                            <label class="block text-sm font-medium text-zinc-700 mb-1">Gross Weight</label>
+                            <label id="weight-label" class="block text-sm font-medium text-zinc-700 mb-1">Gross Weight</label>
                             <div class="flex">
                                 <input type="text" id="gross-weight" name="gross_weight" {% if not allow_manual_entry %}readonly{% endif %} class="block w-full rounded-l-md border-zinc-300 shadow-sm focus:border-blue-500 focus:ring-blue-500 sm:text-sm p-2 {% if not allow_manual_entry %}bg-zinc-50{% endif %}" placeholder="0.00" required>
                                 <span class="inline-flex items-center rounded-r-md border border-l-0 border-zinc-300 bg-zinc-50 px-3 text-zinc-500 sm:text-sm">
@@ -89,7 +89,7 @@
                     
                     <!-- Net Weight as headline text -->
                     <div class="mt-8 mb-8 text-center">
-                        <h3 class="text-sm font-medium text-zinc-500 uppercase">Net Weight</h3>
+                        <h3 id="main-weight-title" class="text-sm font-medium text-zinc-500 uppercase">Current Weight</h3>
                         <div class="flex items-center justify-center mt-2">
                             <span id="net-weight-display" class="text-9xl font-bold text-zinc-900">0.00</span>
                             <span id="unit-display-net" class="ml-2 text-xl text-zinc-500">kg</span>
@@ -243,12 +243,20 @@
                 <div class="p-6">
                     <div>
                         <label for="delivery-note-select" class="block text-sm font-medium text-zinc-700 mb-1">Select Delivery Note</label>
-                        <select id="delivery-note-select" name="delivery_note_id" class="block w-full rounded-md border-zinc-300 shadow-sm focus:border-blue-500 focus:ring-blue-500 sm:text-sm p-2" {% if processes.0.process_type == 'WeighBridge' %}required{% endif %}>
-                            <option value="">{% if processes.0.process_type == 'WeighBridge' %}Select a delivery note (required)...{% else %}Select a delivery note (optional)...{% endif %}</option>
-                            {% for note in delivery_notes %}
-                                <option value="{{ note.id }}">{{ note.delivery_note_number }}</option>
-                            {% endfor %}
-                        </select>
+                        <div class="flex gap-2">
+                            <select id="delivery-note-select" name="delivery_note_id" class="flex-1 rounded-md border-zinc-300 shadow-sm focus:border-blue-500 focus:ring-blue-500 sm:text-sm p-2" {% if processes.0.process_type == 'WeighBridge' %}required{% endif %}>
+                                <option value="">Select a delivery note</option>
+                                {% for note in delivery_notes %}
+                                    <option value="{{ note.id }}">{{ note.delivery_note_number }}</option>
+                                {% endfor %}
+                            </select>
+                            <button type="button" id="create-delivery-note-btn" class="inline-flex items-center justify-center whitespace-nowrap rounded-md text-sm font-medium bg-blue-600 text-white hover:bg-blue-700 px-3 py-2">
+                                <svg class="w-4 h-4 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4"></path>
+                                </svg>
+                                New
+                            </button>
+                        </div>
                     </div>
                 </div>
             </div>
@@ -259,37 +267,27 @@
                 <div class="px-3 py-2 border-b border-zinc-200">
                     <h2 class="text-lg font-medium text-zinc-900">PRODUCT</h2>
                 </div>
-                {% comment %} <div class="p-3">
-                    <div>
-                        <label class="block text-sm font-medium text-zinc-700 mb-1">Product</label>
-                        <div class="flex items-center space-x-1">
-                            <select id="product-select" name="product_id" class="block w-full rounded-md border-zinc-300 shadow-sm focus:border-blue-500 focus:ring-blue-500 sm:text-sm p-1">
-                                <option value="">Select a product...</option>
-                                {% for product in products %}
-                                    <option value="{{ product.id }}">{{ product.name }}</option>
-                                {% endfor %}
-                            </select>
-                            <button id="scan-barcode-btn" type="button" class="inline-flex items-center justify-center whitespace-nowrap rounded-md text-sm font-medium bg-zinc-900 text-zinc-50 hover:bg-zinc-900/90 h-8 px-2 py-1">
-                                <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" viewBox="0 0 20 20" fill="currentColor">
-                                    <path d="M2 4h2V2H2v2zm4 0h2V2H6v2zm4 0h2V2h-2v2zm4 0h2V2h-2v2z" />
-                                    <path d="M18 6H2v12h16V6zM4 16H2v-2h2v2zm0-4H2v-2h2v2zm0-4H2V6h2v2zm4 8H6v-2h2v2zm0-4H6v-2h2v2zm0-4H6V6h2v2zm4 8h-2v-2h2v2zm0-4h-2v-2h2v2zm0-4h-2V6h2v2zm4 8h-2v-2h2v2zm0-4h-2v-2h2v2zm0-4h-2V6h2v2z" />
-                                </svg>
-                            </button>
+                <div class="p-3">
+                    <div id="product-display">
+                        {% if products|length == 1 %}
+                            <div id="default-product">
+                                <label class="block text-sm font-medium text-zinc-700 mb-1">Product</label>
+                                <div class="py-2 px-3 bg-zinc-100 rounded text-zinc-900">{{ products.0.name }}</div>
+                                <input type="hidden" id="product-id-input" name="product_id" value="{{ products.0.id }}">
+                            </div>
+                        {% elif products|length == 0 %}
+                            <div id="no-product" class="text-red-600 text-sm">No active product available. Please activate a product.</div>
+                        {% else %}
+                            <div id="multiple-products" class="text-red-600 text-sm">Multiple active products found. Please ensure only one product is active.</div>
+                        {% endif %}
+                        
+                        <!-- Delivery Note Product Override (hidden by default) -->
+                        <div id="delivery-note-product" class="hidden">
+                            <label class="block text-sm font-medium text-zinc-700 mb-1">Product <span class="text-blue-600 text-xs">(from delivery note)</span></label>
+                            <div id="delivery-note-product-name" class="py-2 px-3 bg-blue-50 border border-blue-200 rounded text-zinc-900"></div>
+                            <input type="hidden" id="delivery-note-product-id" name="product_id" value="">
                         </div>
                     </div>
-                </div>  {% endcomment %}
-                <div class="p-3">
-                    {% if products|length == 1 %}
-                        <div>
-                            <label class="block text-sm font-medium text-zinc-700 mb-1">Product</label>
-                            <div class="py-2 px-3 bg-zinc-100 rounded text-zinc-900">{{ products.0.name }}</div>
-                            <input type="hidden" name="product_id" value="{{ products.0.id }}">
-                        </div>
-                    {% elif products|length == 0 %}
-                        <div class="text-red-600 text-sm">No active product available. Please activate a product.</div>
-                    {% else %}
-                        <div class="text-red-600 text-sm">Multiple active products found. Please ensure only one product is active.</div>
-                    {% endif %}
                 </div>
             </div>
 
@@ -491,17 +489,26 @@
         const deliveryNoteSelect = document.getElementById('delivery-note-select');
         
         deliveryNoteSelect.addEventListener('change', function() {
-            if (processType === 'WeighBridge' && this.value) {
+            if (this.value) {
                 fetchDeliveryNoteRecord(this.value);
-            } else if (!this.value) {
+            } else {
                 // Clear barcode lock when no delivery note selected
                 document.getElementById('barcode-input').readOnly = false;
                 document.getElementById('barcode-input').classList.remove('bg-gray-100');
                 document.getElementById('barcode-input').value = '';
+                
+                // Reset to default product
+                resetToDefaultProduct();
+                
+                // Reset save button to normal
+                updateSaveButtonForSecondWeighing(false);
+                
+                // Reset weight label to "Gross Weight"
+                updateWeightLabel(false);
             }
         });
 
-        // Function to fetch existing record data for weighbridge
+        // Function to fetch existing record data for delivery note
         function fetchDeliveryNoteRecord(deliveryNoteId) {
             $.ajax({
                 url: "{% url 'scale:get_delivery_note_record' 0 %}".replace('0', deliveryNoteId),
@@ -517,11 +524,26 @@
                             return;
                         }
                         
+                        // Handle product from delivery note or existing record
+                        if (data.product) {
+                            setDeliveryNoteProduct(data.product);
+                        } else {
+                            resetToDefaultProduct();
+                        }
+                        
                         if (data.record) {
-                            // Populate barcode and lock it
-                            document.getElementById('barcode-input').value = data.record.barcode || '';
-                            document.getElementById('barcode-input').readOnly = true;
-                            document.getElementById('barcode-input').classList.add('bg-gray-100');
+                            // Populate barcode and lock it for weighbridge
+                            if (processType === 'WeighBridge') {
+                                document.getElementById('barcode-input').value = data.record.barcode || '';
+                                document.getElementById('barcode-input').readOnly = true;
+                                document.getElementById('barcode-input').classList.add('bg-gray-100');
+                                
+                                // Change save button to "Save and Close" for second weighing
+                                updateSaveButtonForSecondWeighing(true);
+                                
+                                // Update weight label to "Tare Weight" for second weighing
+                                updateWeightLabel(true);
+                            }
                             
                             // Populate custom fields
                             if (data.record.custom_data) {
@@ -531,6 +553,12 @@
                             // No existing record, unlock barcode
                             document.getElementById('barcode-input').readOnly = false;
                             document.getElementById('barcode-input').classList.remove('bg-gray-100');
+                            
+                            // Reset save button to normal for first weighing
+                            updateSaveButtonForSecondWeighing(false);
+                            
+                            // Reset weight label to "Gross Weight" for first weighing
+                            updateWeightLabel(false);
                         }
                     }
                 },
@@ -538,6 +566,47 @@
                     console.log('Error fetching delivery note record:', error);
                 }
             });
+        }
+
+        // Function to set product from delivery note
+        function setDeliveryNoteProduct(product) {
+            // Hide default product displays
+            const defaultProduct = document.getElementById('default-product');
+            const noProduct = document.getElementById('no-product');
+            const multipleProducts = document.getElementById('multiple-products');
+            const deliveryNoteProduct = document.getElementById('delivery-note-product');
+            
+            if (defaultProduct) defaultProduct.classList.add('hidden');
+            if (noProduct) noProduct.classList.add('hidden');
+            if (multipleProducts) multipleProducts.classList.add('hidden');
+            
+            // Show delivery note product
+            if (deliveryNoteProduct) {
+                deliveryNoteProduct.classList.remove('hidden');
+                document.getElementById('delivery-note-product-name').textContent = product.name;
+                document.getElementById('delivery-note-product-id').value = product.id;
+            }
+        }
+
+        // Function to reset to default product
+        function resetToDefaultProduct() {
+            // Show default product displays
+            const defaultProduct = document.getElementById('default-product');
+            const noProduct = document.getElementById('no-product');
+            const multipleProducts = document.getElementById('multiple-products');
+            const deliveryNoteProduct = document.getElementById('delivery-note-product');
+            
+            if (deliveryNoteProduct) deliveryNoteProduct.classList.add('hidden');
+            
+            if (defaultProduct) defaultProduct.classList.remove('hidden');
+            if (noProduct) noProduct.classList.remove('hidden');
+            if (multipleProducts) multipleProducts.classList.remove('hidden');
+            
+            // Reset the main product input
+            const productIdInput = document.getElementById('product-id-input');
+            if (productIdInput) {
+                document.getElementById('delivery-note-product-id').value = '';
+            }
         }
 
         // Function to populate custom fields from existing record
@@ -555,6 +624,36 @@
                     }
                 }
             });
+        }
+        
+        // Function to update save button text for second weighing in weighbridge
+        function updateSaveButtonForSecondWeighing(isSecondWeighing) {
+            const saveBtn = document.getElementById('save-btn');
+            if (isSecondWeighing) {
+                saveBtn.textContent = 'Save and Close';
+                saveBtn.classList.remove('bg-zinc-900', 'hover:bg-zinc-900/90');
+                saveBtn.classList.add('bg-red-600', 'hover:bg-red-700');
+            } else {
+                saveBtn.textContent = 'Save';
+                saveBtn.classList.remove('bg-red-600', 'hover:bg-red-700');
+                saveBtn.classList.add('bg-zinc-900', 'hover:bg-zinc-900/90');
+            }
+        }
+        
+        // Function to update weight label based on weighbridge state
+        function updateWeightLabel(isSecondWeighing) {
+            const weightLabel = document.getElementById('weight-label');
+            const mainWeightTitle = document.getElementById('main-weight-title');
+            
+            if (isSecondWeighing && processType === 'WeighBridge') {
+                // Second weighing - show tare weight
+                if (weightLabel) weightLabel.textContent = 'Tare Weight';
+                if (mainWeightTitle) mainWeightTitle.textContent = 'Tare Weight';
+            } else {
+                // First weighing or non-weighbridge - show gross weight
+                if (weightLabel) weightLabel.textContent = 'Gross Weight';
+                if (mainWeightTitle) mainWeightTitle.textContent = 'Current Weight';
+            }
         }
         
         // Calculate net weight when tare weight changes
@@ -873,6 +972,7 @@
         let weightPollingInterval;
 
         function getWeight() {
+            console.log('Getting weight...');
             const scaleId = $('#scale-select').val();
             
             if (!scaleId) {
@@ -911,12 +1011,12 @@
             
             // If a scale is selected, start polling
             if ($(this).val()) {
-                weightPollingInterval = setInterval(getWeight, 500); // Poll every 0.5 seconds
+                weightPollingInterval = setInterval(getWeight, 5000); // Poll every 5 seconds
             }
         });
 
         $(window).on('load', function() {
-            weightPollingInterval = setInterval(getWeight, 500);
+            weightPollingInterval = setInterval(getWeight, 5000);
         });
 
         // Stop polling when leaving the page
@@ -1233,8 +1333,205 @@
 //            }, 500);
 //        });
 
+        // Initialize weight label on page load
+        updateWeightLabel(false);
 
     });
 </script>
+
+<!-- Create Delivery Note Modal -->
+<div id="create-delivery-note-modal" class="fixed inset-0 bg-gray-600 bg-opacity-50 overflow-y-auto h-full w-full hidden z-50">
+    <div class="relative top-20 mx-auto p-5 border w-11/12 md:w-3/4 lg:w-1/2 shadow-lg rounded-md bg-white">
+        <div class="mt-3">
+            <div class="flex justify-between items-center mb-4">
+                <h3 class="text-lg font-medium text-gray-900">Create New Delivery Note</h3>
+                <button type="button" id="close-delivery-note-modal" class="text-gray-400 hover:text-gray-600">
+                    <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path>
+                    </svg>
+                </button>
+            </div>
+            <form id="delivery-note-form" class="space-y-4">
+                {% csrf_token %}
+                <div class="bg-blue-50 border border-blue-200 rounded-md p-3 mb-4">
+                    <p class="text-sm text-blue-800">
+                        <svg class="inline w-4 h-4 mr-1" fill="currentColor" viewBox="0 0 20 20">
+                            <path fill-rule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7-4a1 1 0 11-2 0 1 1 0 012 0zM9 9a1 1 0 000 2v3a1 1 0 001 1h1a1 1 0 100-2v-3a1 1 0 00-1-1H9z" clip-rule="evenodd"></path>
+                        </svg>
+                        Delivery note number will be automatically generated (e.g., SDN-0001)
+                    </p>
+                </div>
+                <div>
+                    <label for="modal-status" class="block text-sm font-medium text-gray-700">Status</label>
+                    <select id="modal-status" name="status" class="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500 sm:text-sm p-2">
+                        <option value="Open">Open</option>
+                        <option value="Closed">Closed</option>
+                    </select>
+                </div>
+                <div>
+                    <label for="modal-driver" class="block text-sm font-medium text-gray-700">Driver</label>
+                    <select id="modal-driver" name="driver" class="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500 sm:text-sm p-2">
+                        <option value="">Select a driver (optional)</option>
+                        {% for driver in drivers %}
+                            <option value="{{ driver.id }}">{{ driver.name }}</option>
+                        {% endfor %}
+                    </select>
+                </div>
+                <div>
+                    <label for="modal-truck" class="block text-sm font-medium text-gray-700">Truck</label>
+                    <select id="modal-truck" name="truck" class="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500 sm:text-sm p-2">
+                        <option value="">Select a truck (optional)</option>
+                        {% for truck in trucks %}
+                            <option value="{{ truck.id }}">{{ truck.license_plate }}</option>
+                        {% endfor %}
+                    </select>
+                </div>
+                <div>
+                    <label for="modal-trailer1" class="block text-sm font-medium text-gray-700">Trailer 1</label>
+                    <select id="modal-trailer1" name="trailer1" class="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500 sm:text-sm p-2">
+                        <option value="">Select a trailer (optional)</option>
+                        {% for trailer in trailers %}
+                            <option value="{{ trailer.id }}">{{ trailer.license_plate }}</option>
+                        {% endfor %}
+                    </select>
+                </div>
+                <div>
+                    <label for="modal-trailer2" class="block text-sm font-medium text-gray-700">Trailer 2</label>
+                    <select id="modal-trailer2" name="trailer2" class="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500 sm:text-sm p-2">
+                        <option value="">Select a trailer (optional)</option>
+                        {% for trailer in trailers %}
+                            <option value="{{ trailer.id }}">{{ trailer.license_plate }}</option>
+                        {% endfor %}
+                    </select>
+                </div>
+                <div>
+                    <label for="modal-product" class="block text-sm font-medium text-gray-700">Product</label>
+                    <select id="modal-product" name="product" class="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500 sm:text-sm p-2">
+                        <option value="">Select a product (optional)</option>
+                        {% for product in products %}
+                            <option value="{{ product.id }}">{{ product.name }}</option>
+                        {% endfor %}
+                    </select>
+                </div>
+                <div>
+                    <label for="modal-notes" class="block text-sm font-medium text-gray-700">Notes</label>
+                    <textarea id="modal-notes" name="notes" rows="3" class="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500 sm:text-sm p-2" placeholder="Add any notes or comments..."></textarea>
+                </div>
+                <div class="flex justify-end space-x-3 mt-6">
+                    <button type="button" id="cancel-delivery-note" class="px-4 py-2 text-sm font-medium text-gray-700 bg-gray-200 border border-gray-300 rounded-md hover:bg-gray-300 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-gray-500">
+                        Cancel
+                    </button>
+                    <button type="submit" id="submit-delivery-note" class="px-4 py-2 text-sm font-medium text-white bg-blue-600 border border-transparent rounded-md hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500">
+                        Create Delivery Note
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+
+<script>
+// Handle Create Delivery Note Modal
+document.addEventListener('DOMContentLoaded', function() {
+    const createDeliveryNoteBtn = document.getElementById('create-delivery-note-btn');
+    const deliveryNoteModal = document.getElementById('create-delivery-note-modal');
+    const closeDeliveryNoteModal = document.getElementById('close-delivery-note-modal');
+    const cancelDeliveryNote = document.getElementById('cancel-delivery-note');
+    const deliveryNoteForm = document.getElementById('delivery-note-form');
+    const deliveryNoteSelect = document.getElementById('delivery-note-select');
+
+    // Show modal
+    createDeliveryNoteBtn.addEventListener('click', function() {
+        deliveryNoteModal.classList.remove('hidden');
+        document.getElementById('modal-delivery-note-number').focus();
+    });
+
+    // Hide modal functions
+    function hideModal() {
+        deliveryNoteModal.classList.add('hidden');
+        deliveryNoteForm.reset();
+    }
+
+    closeDeliveryNoteModal.addEventListener('click', hideModal);
+    cancelDeliveryNote.addEventListener('click', hideModal);
+
+    // Close modal when clicking outside
+    deliveryNoteModal.addEventListener('click', function(e) {
+        if (e.target === deliveryNoteModal) {
+            hideModal();
+        }
+    });
+
+    // Handle form submission
+    deliveryNoteForm.addEventListener('submit', function(e) {
+        e.preventDefault();
+        
+        const formData = new FormData(this);
+        const submitBtn = document.getElementById('submit-delivery-note');
+        const originalText = submitBtn.textContent;
+        
+        // Disable submit button and show loading state
+        submitBtn.disabled = true;
+        submitBtn.textContent = 'Creating...';
+        
+        fetch('{% url "scale:delivery_note_create_ajax" %}', {
+            method: 'POST',
+            body: formData,
+            headers: {
+                'X-CSRFToken': document.querySelector('[name=csrfmiddlewaretoken]').value
+            }
+        })
+        .then(response => response.json())
+        .then(data => {
+            if (data.success) {
+                // Add new delivery note to the dropdown
+                const option = new Option(data.delivery_note.delivery_note_number, data.delivery_note.id);
+                deliveryNoteSelect.add(option);
+                
+                // Select the newly created delivery note
+                deliveryNoteSelect.value = data.delivery_note.id;
+                
+                // Trigger change event to update any dependent functionality
+                const event = new Event('change', { bubbles: true });
+                deliveryNoteSelect.dispatchEvent(event);
+                
+                // Hide modal and show success message
+                hideModal();
+                
+                // Show success notification (you can customize this)
+                const notification = document.createElement('div');
+                notification.className = 'fixed top-4 right-4 bg-green-500 text-white px-4 py-2 rounded-md shadow-lg z-50';
+                notification.textContent = `Delivery note "${data.delivery_note.delivery_note_number}" created successfully!`;
+                document.body.appendChild(notification);
+                
+                setTimeout(() => {
+                    notification.remove();
+                }, 3000);
+                
+            } else {
+                // Handle errors
+                let errorMessage = data.message || 'An error occurred while creating the delivery note.';
+                if (data.errors) {
+                    errorMessage += '\n\nDetails:\n';
+                    for (const [field, error] of Object.entries(data.errors)) {
+                        errorMessage += `${field}: ${error}\n`;
+                    }
+                }
+                alert(errorMessage);
+            }
+        })
+        .catch(error => {
+            console.error('Error:', error);
+            alert('An error occurred while creating the delivery note. Please try again.');
+        })
+        .finally(() => {
+            // Re-enable submit button
+            submitBtn.disabled = false;
+            submitBtn.textContent = originalText;
+        });
+    });
+});
+</script>
+
 {% endblock %}
     

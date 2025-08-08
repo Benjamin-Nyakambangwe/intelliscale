@@ -77,6 +77,16 @@
                         </dd>
                     </div>
                     <div>
+                        <dt class="text-sm font-medium text-zinc-500">Tare Weight</dt>
+                        <dd class="mt-1 text-sm text-zinc-900">
+                            {% if product.tare_weight %}
+                                {{ product.tare_weight }}
+                            {% else %}
+                                <span class="text-zinc-400 italic">Not specified</span>
+                            {% endif %}
+                        </dd>
+                    </div>
+                    <div>
                         <dt class="text-sm font-medium text-zinc-500">Status</dt>
                         <dd class="mt-1 text-sm text-zinc-900">{{ product.is_active|yesno:"Active,Inactive" }}</dd>
                     </div>

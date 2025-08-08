@@ -58,4 +58,10 @@ urlpatterns = [
     
     # Company Settings URL
     path('company-settings/', views.company_settings, name='company_settings'),
+    
+    # Driver Management URLs
+    path('drivers/create-ajax/', views.driver_create_ajax, name='driver_create_ajax'),
+    path('trucks/create-ajax/', views.truck_create_ajax, name='truck_create_ajax'),
+    path('trailers/create-ajax/', views.trailer_create_ajax, name='trailer_create_ajax'),
+    path('delivery-notes/create-ajax/', views.delivery_note_create_ajax, name='delivery_note_create_ajax'),
 ] 

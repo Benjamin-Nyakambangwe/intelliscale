@@ -33,13 +33,13 @@
             {% csrf_token %}
             <div class="space-y-6">
                 <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
-                    <div>
+                    {% comment %} <div>
                         <label for="{{ form.delivery_note_number.id_for_label }}" class="block text-sm font-medium text-zinc-700 mb-2">Delivery Note Number</label>
                         {{ form.delivery_note_number }}
                         {% if form.delivery_note_number.errors %}
                             <p class="mt-1 text-sm text-red-600">{{ form.delivery_note_number.errors.0 }}</p>
                         {% endif %}
-                    </div>
+                    </div> {% endcomment %}
 
                     <div>
                         <label for="{{ form.status.id_for_label }}" class="block text-sm font-medium text-zinc-700 mb-2">Status</label>
@@ -51,15 +51,32 @@
 
                     <div>
                         <label for="{{ form.driver.id_for_label }}" class="block text-sm font-medium text-zinc-700 mb-2">Driver</label>
-                        {{ form.driver }}
+                        <div class="flex space-x-2">
+                            {{ form.driver }}
+                            <button type="button" id="create-driver-btn" class="inline-flex items-center justify-center whitespace-nowrap rounded-md text-sm font-medium bg-blue-600 text-white hover:bg-blue-700 h-10 px-3 py-2">
+                                <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4 mr-1" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4" />
+                                </svg>
+                                New
+                            </button>
+                        </div>
                         {% if form.driver.errors %}
                             <p class="mt-1 text-sm text-red-600">{{ form.driver.errors.0 }}</p>
                         {% endif %}
+                       
                     </div>
 
                     <div>
                         <label for="{{ form.truck.id_for_label }}" class="block text-sm font-medium text-zinc-700 mb-2">Truck</label>
-                        {{ form.truck }}
+                        <div class="flex space-x-2">
+                            {{ form.truck }}
+                            <button type="button" id="create-truck-btn" class="inline-flex items-center justify-center whitespace-nowrap rounded-md text-sm font-medium bg-blue-600 text-white hover:bg-blue-700 h-10 px-3 py-2">
+                            <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4 mr-1" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4" />
+                            </svg>
+                            New
+                        </button>
+                        </div>
                         {% if form.truck.errors %}
                             <p class="mt-1 text-sm text-red-600">{{ form.truck.errors.0 }}</p>
                         {% endif %}
@@ -67,7 +84,15 @@
 
                     <div>
                         <label for="{{ form.trailer1.id_for_label }}" class="block text-sm font-medium text-zinc-700 mb-2">Trailer 1</label>
-                        {{ form.trailer1 }}
+                        <div class="flex space-x-2">
+                            {{ form.trailer1 }}
+                            <button type="button" class="create-trailer-btn" data-target="trailer1" class="inline-flex items-center justify-center whitespace-nowrap rounded-md text-sm font-medium bg-blue-600 text-white hover:bg-blue-700 h-10 px-3 py-2">
+                            <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4 mr-1" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4" />
+                            </svg>
+                            New
+                        </button>
+                        </div>
                         {% if form.trailer1.errors %}
                             <p class="mt-1 text-sm text-red-600">{{ form.trailer1.errors.0 }}</p>
                         {% endif %}
@@ -75,12 +100,29 @@
 
                     <div>
                         <label for="{{ form.trailer2.id_for_label }}" class="block text-sm font-medium text-zinc-700 mb-2">Trailer 2</label>
-                        {{ form.trailer2 }}
+                        <div class="flex space-x-2">
+                            {{ form.trailer2 }}
+                            <button type="button" class="create-trailer-btn" data-target="trailer2" class="inline-flex items-center justify-center whitespace-nowrap rounded-md text-sm font-medium bg-blue-600 text-white hover:bg-blue-700 h-10 px-3 py-2">
+                            <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4 mr-1" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4" />
+                            </svg>
+                            New
+                        </button>
                         {% if form.trailer2.errors %}
                             <p class="mt-1 text-sm text-red-600">{{ form.trailer2.errors.0 }}</p>
                         {% endif %}
+                        </div>
+                    </div>
+
+                    <div>
+                        <label for="{{ form.product.id_for_label }}" class="block text-sm font-medium text-zinc-700 mb-2">Product</label>
+                        {{ form.product }}
+                        {% if form.product.errors %}
+                            <p class="mt-1 text-sm text-red-600">{{ form.product.errors.0 }}</p>
+                        {% endif %}
                     </div>
                 </div>
+
 
                 <div>
                     <label for="{{ form.notes.id_for_label }}" class="block text-sm font-medium text-zinc-700 mb-2">Notes</label>
@@ -102,4 +144,537 @@
         </form>
     </div>
 </div>
+
+<!-- Driver Creation Modal -->
+<div id="driver-modal" class="fixed inset-0 bg-gray-600 bg-opacity-50 overflow-y-auto h-full w-full hidden z-50">
+    <div class="relative top-20 mx-auto p-5 border w-96 shadow-lg rounded-md bg-white">
+        <div class="mt-3">
+            <div class="flex items-center justify-between mb-4">
+                <h3 class="text-lg font-medium text-gray-900">Create New Driver</h3>
+                <button type="button" id="close-driver-modal" class="text-gray-400 hover:text-gray-600">
+                    <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path>
+                    </svg>
+                </button>
+            </div>
+            
+            <form id="driver-form">
+                {% csrf_token %}
+                <div class="space-y-4">
+                    <div>
+                        <label for="driver-name" class="block text-sm font-medium text-gray-700 mb-2">Driver Name <span class="text-red-500">*</span></label>
+                        <input type="text" id="driver-name" name="name" required 
+                               class="block w-full rounded-md border-zinc-300 shadow-sm focus:border-blue-500 focus:ring-blue-500 sm:text-sm p-2" 
+                               placeholder="Enter driver name">
+                        <p id="driver-name-error" class="mt-1 text-sm text-red-600 hidden"></p>
+                    </div>
+                    
+                    <div>
+                        <label for="driver-phone" class="block text-sm font-medium text-gray-700 mb-2">Phone Number</label>
+                        <input type="text" id="driver-phone" name="phone" 
+                               class="block w-full rounded-md border-zinc-300 shadow-sm focus:border-blue-500 focus:ring-blue-500 sm:text-sm p-2" 
+                               placeholder="Enter phone number (optional)">
+                        <p id="driver-phone-error" class="mt-1 text-sm text-red-600 hidden"></p>
+                    </div>
+                </div>
+                
+                <div class="flex justify-end space-x-3 mt-6">
+                    <button type="button" id="cancel-driver" class="inline-flex items-center justify-center whitespace-nowrap rounded-md text-sm font-medium border border-zinc-300 bg-white text-zinc-700 hover:bg-zinc-50 h-10 px-4 py-2">
+                        Cancel
+                    </button>
+                    <button type="submit" id="save-driver" class="inline-flex items-center justify-center whitespace-nowrap rounded-md text-sm font-medium bg-blue-600 text-white hover:bg-blue-700 h-10 px-4 py-2">
+                        <span class="driver-btn-text">Create Driver</span>
+                        <svg class="animate-spin -ml-1 mr-3 h-4 w-4 text-white hidden driver-loading" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                            <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+                            <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                        </svg>
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+
+
+<!-- Truck Creation Modal -->
+<div id="truck-modal" class="fixed inset-0 bg-gray-600 bg-opacity-50 overflow-y-auto h-full w-full hidden z-50">
+    <div class="relative top-20 mx-auto p-5 border w-96 shadow-lg rounded-md bg-white">
+        <div class="mt-3">
+            <div class="flex items-center justify-between mb-4">
+                <h3 class="text-lg font-medium text-gray-900">Create New Truck</h3>
+                <button type="button" id="close-truck-modal" class="text-gray-400 hover:text-gray-600">
+                    <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path>
+                    </svg>
+                </button>
+            </div>
+            
+            <form id="truck-form">
+                {% csrf_token %}
+                <div class="space-y-4">
+                    <div>
+                        <label for="truck-brand" class="block text-sm font-medium text-gray-700 mb-2">Truck Brand <span class="text-red-500">*</span></label>
+                        <input type="text" id="truck-brand" name="brand" required 
+                               class="block w-full rounded-md border-zinc-300 shadow-sm focus:border-blue-500 focus:ring-blue-500 sm:text-sm p-2" 
+                               placeholder="Enter truck brand">
+                        <p id="truck-brand-error" class="mt-1 text-sm text-red-600 hidden"></p>
+                    </div>
+                    
+                    <div>
+                        <label for="truck-license-plate" class="block text-sm font-medium text-gray-700 mb-2">License Plate</label>
+                        <input type="text" id="truck-license-plate" name="license_plate" 
+                               class="block w-full rounded-md border-zinc-300 shadow-sm focus:border-blue-500 focus:ring-blue-500 sm:text-sm p-2" 
+                               placeholder="Enter truck license plate">
+                        <p id="truck-license-plate-error" class="mt-1 text-sm text-red-600 hidden"></p>
+                    </div>
+
+                    <div>
+                        <label for="truck-color" class="block text-sm font-medium text-gray-700 mb-2">Color</label>
+                        <input type="text" id="truck-color" name="color" 
+                               class="block w-full rounded-md border-zinc-300 shadow-sm focus:border-blue-500 focus:ring-blue-500 sm:text-sm p-2" 
+                               placeholder="Enter truck color">
+                        <p id="truck-color-error" class="mt-1 text-sm text-red-600 hidden"></p>
+                    </div>
+                </div>
+                
+                <div class="flex justify-end space-x-3 mt-6">
+                    <button type="button" id="cancel-truck" class="inline-flex items-center justify-center whitespace-nowrap rounded-md text-sm font-medium border border-zinc-300 bg-white text-zinc-700 hover:bg-zinc-50 h-10 px-4 py-2">
+                        Cancel
+                    </button>
+                    <button type="submit" id="save-truck" class="inline-flex items-center justify-center whitespace-nowrap rounded-md text-sm font-medium bg-blue-600 text-white hover:bg-blue-700 h-10 px-4 py-2">
+                        <span class="truck-btn-text">Create Truck</span>
+                        <svg class="animate-spin -ml-1 mr-3 h-4 w-4 text-white hidden truck-loading" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                            <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+                            <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                        </svg>
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+
+<!-- Trailer Creation Modal -->
+<div id="trailer-modal" class="fixed inset-0 bg-gray-600 bg-opacity-50 overflow-y-auto h-full w-full hidden z-50">
+    <div class="relative top-20 mx-auto p-5 border w-96 shadow-lg rounded-md bg-white">
+        <div class="mt-3">
+            <div class="flex items-center justify-between mb-4">
+                <h3 class="text-lg font-medium text-gray-900">Create New Trailer</h3>
+                <button type="button" id="close-trailer-modal" class="text-gray-400 hover:text-gray-600">
+                    <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path>
+                    </svg>
+                </button>
+            </div>
+            
+            <form id="trailer-form">
+                {% csrf_token %}
+                <div class="space-y-4">
+                    <div>
+                        <label for="trailer-brand" class="block text-sm font-medium text-gray-700 mb-2">Trailer Brand <span class="text-red-500">*</span></label>
+                        <input type="text" id="trailer-brand" name="brand" required 
+                               class="block w-full rounded-md border-zinc-300 shadow-sm focus:border-blue-500 focus:ring-blue-500 sm:text-sm p-2" 
+                               placeholder="Enter trailer brand">
+                        <p id="trailer-brand-error" class="mt-1 text-sm text-red-600 hidden"></p>
+                    </div>
+                    
+                    <div>
+                        <label for="trailer-license-plate" class="block text-sm font-medium text-gray-700 mb-2">License Plate</label>
+                        <input type="text" id="trailer-license-plate" name="license_plate" 
+                               class="block w-full rounded-md border-zinc-300 shadow-sm focus:border-blue-500 focus:ring-blue-500 sm:text-sm p-2" 
+                               placeholder="Enter trailer license plate">
+                        <p id="trailer-license-plate-error" class="mt-1 text-sm text-red-600 hidden"></p>
+                    </div>
+
+                    <div>
+                        <label for="trailer-color" class="block text-sm font-medium text-gray-700 mb-2">Color</label>
+                        <input type="text" id="trailer-color" name="color" 
+                               class="block w-full rounded-md border-zinc-300 shadow-sm focus:border-blue-500 focus:ring-blue-500 sm:text-sm p-2" 
+                               placeholder="Enter trailer color">
+                        <p id="trailer-color-error" class="mt-1 text-sm text-red-600 hidden"></p>
+                    </div>
+                </div>
+                
+                <div class="flex justify-end space-x-3 mt-6">
+                    <button type="button" id="cancel-trailer" class="inline-flex items-center justify-center whitespace-nowrap rounded-md text-sm font-medium border border-zinc-300 bg-white text-zinc-700 hover:bg-zinc-50 h-10 px-4 py-2">
+                        Cancel
+                    </button>
+                    <button type="submit" id="save-trailer" class="inline-flex items-center justify-center whitespace-nowrap rounded-md text-sm font-medium bg-blue-600 text-white hover:bg-blue-700 h-10 px-4 py-2">
+                        <span class="trailer-btn-text">Create Trailer</span>
+                        <svg class="animate-spin -ml-1 mr-3 h-4 w-4 text-white hidden trailer-loading" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                            <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+                            <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                        </svg>
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+
+
+
+
+
+
+
+   
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    const createDriverBtn = document.getElementById('create-driver-btn');
+    const driverModal = document.getElementById('driver-modal');
+    const closeModal = document.getElementById('close-driver-modal');
+    const cancelDriver = document.getElementById('cancel-driver');
+    const driverForm = document.getElementById('driver-form');
+    const driverSelect = document.getElementById('{{ form.driver.id_for_label }}');
+    
+    // Show modal
+    createDriverBtn.addEventListener('click', function() {
+        driverModal.classList.remove('hidden');
+        document.getElementById('driver-name').focus();
+        clearErrors();
+    });
+    
+    // Hide modal
+    function hideModal() {
+        driverModal.classList.add('hidden');
+        driverForm.reset();
+        clearErrors();
+        hideLoading();
+    }
+    
+    closeModal.addEventListener('click', hideModal);
+    cancelDriver.addEventListener('click', hideModal);
+    
+    // Close modal when clicking outside
+    driverModal.addEventListener('click', function(e) {
+        if (e.target === driverModal) {
+            hideModal();
+        }
+    });
+    
+    // Clear errors
+    function clearErrors() {
+        document.getElementById('driver-name-error').classList.add('hidden');
+        document.getElementById('driver-phone-error').classList.add('hidden');
+        document.getElementById('driver-name').classList.remove('border-red-300');
+        document.getElementById('driver-phone').classList.remove('border-red-300');
+    }
+    
+    // Show loading state
+    function showLoading() {
+        document.querySelector('.driver-btn-text').textContent = 'Creating...';
+        document.querySelector('.driver-loading').classList.remove('hidden');
+        document.getElementById('save-driver').disabled = true;
+    }
+    
+    // Hide loading state
+    function hideLoading() {
+        document.querySelector('.driver-btn-text').textContent = 'Create Driver';
+        document.querySelector('.driver-loading').classList.add('hidden');
+        document.getElementById('save-driver').disabled = false;
+    }
+    
+    // Handle form submission
+    driverForm.addEventListener('submit', function(e) {
+        e.preventDefault();
+        
+        clearErrors();
+        showLoading();
+        
+        const formData = new FormData(driverForm);
+        
+        fetch('{% url "scale:driver_create_ajax" %}', {
+            method: 'POST',
+            body: formData,
+            headers: {
+                'X-CSRFToken': document.querySelector('[name=csrfmiddlewaretoken]').value,
+            }
+        })
+        .then(response => response.json())
+        .then(data => {
+            hideLoading();
+            
+            if (data.success) {
+                // Add new driver to select option
+                const newOption = new Option(data.driver.name, data.driver.id, true, true);
+                driverSelect.add(newOption);
+                
+                // Show success message (you can replace this with a toast if preferred)
+                alert(data.message);
+                
+                // Hide modal
+                hideModal();
+                
+            } else {
+                // Handle errors
+                if (data.errors) {
+                    for (const [field, error] of Object.entries(data.errors)) {
+                        const errorElement = document.getElementById(`driver-${field}-error`);
+                        const inputElement = document.getElementById(`driver-${field}`);
+                        if (errorElement && inputElement) {
+                            errorElement.textContent = error;
+                            errorElement.classList.remove('hidden');
+                            inputElement.classList.add('border-red-300');
+                        }
+                    }
+                } else {
+                    alert(data.message || 'An error occurred while creating the driver');
+                }
+            }
+        })
+        .catch(error => {
+            hideLoading();
+            console.error('Error:', error);
+            alert('An error occurred while creating the driver');
+        });
+    });
+});
+</script>
+
+
+<script>
+    document.addEventListener('DOMContentLoaded', function() {
+        const createTruckBtn = document.getElementById('create-truck-btn');
+        const truckModal = document.getElementById('truck-modal');
+        const closeModal = document.getElementById('close-truck-modal');
+        const cancelTruck = document.getElementById('cancel-truck');
+        const truckForm = document.getElementById('truck-form');
+        const truckSelect = document.getElementById('{{ form.truck.id_for_label }}');
+        
+        // Show modal
+        createTruckBtn.addEventListener('click', function() {
+            truckModal.classList.remove('hidden');
+            document.getElementById('truck-brand').focus();
+            clearErrors();
+        });
+        
+        // Hide modal
+        function hideModal() {
+            truckModal.classList.add('hidden');
+            truckForm.reset();
+            clearErrors();
+            hideLoading();
+        }
+        
+        closeModal.addEventListener('click', hideModal);
+        cancelTruck.addEventListener('click', hideModal);
+        
+        // Close modal when clicking outside
+        truckModal.addEventListener('click', function(e) {
+            if (e.target === truckModal) {
+                hideModal();
+            }
+        });
+        
+        // Clear errors
+        function clearErrors() {
+            document.getElementById('truck-brand-error').classList.add('hidden');
+            document.getElementById('truck-license-plate-error').classList.add('hidden');
+            document.getElementById('truck-color-error').classList.add('hidden');
+            document.getElementById('truck-brand').classList.remove('border-red-300');
+            document.getElementById('truck-license-plate').classList.remove('border-red-300');
+            document.getElementById('truck-color').classList.remove('border-red-300');
+        }
+        
+        // Show loading state
+        function showLoading() {
+            document.querySelector('.truck-btn-text').textContent = 'Creating...';
+            document.querySelector('.truck-loading').classList.remove('hidden');
+            document.getElementById('save-truck').disabled = true;
+        }
+        
+        // Hide loading state
+        function hideLoading() {
+            document.querySelector('.truck-btn-text').textContent = 'Create Truck';
+            document.querySelector('.truck-loading').classList.add('hidden');
+            document.getElementById('save-truck').disabled = false;
+        }
+        
+        // Handle form submission
+        truckForm.addEventListener('submit', function(e) {
+            e.preventDefault();
+            
+            clearErrors();
+            showLoading();
+            
+                const formData = new FormData(truckForm);
+            
+            fetch('{% url "scale:truck_create_ajax" %}', {
+                method: 'POST',
+                body: formData,
+                headers: {
+                    'X-CSRFToken': document.querySelector('[name=csrfmiddlewaretoken]').value,
+                }
+            })
+            .then(response => response.json())
+            .then(data => {
+                hideLoading();
+                
+                                    if (data.success) {
+                        // Add new truck to select option
+                        const newOption = new Option(data.truck.license_plate, data.truck.id, true, true);
+                        truckSelect.add(newOption);
+                    
+                    // Show success message (you can replace this with a toast if preferred)
+                    alert(data.message);
+                    
+                    // Hide modal
+                    hideModal();
+                    
+                } else {
+                    // Handle errors
+                    if (data.errors) {
+                        for (const [field, error] of Object.entries(data.errors)) {
+                            const errorElement = document.getElementById(`truck-${field}-error`);
+                            const inputElement = document.getElementById(`truck-${field}`);
+                            if (errorElement && inputElement) {
+                                errorElement.textContent = error;
+                                errorElement.classList.remove('hidden');
+                                inputElement.classList.add('border-red-300');
+                            }
+                        }
+                    } else {
+                        alert(data.message || 'An error occurred while creating the truck');
+                    }
+                }
+            })
+            .catch(error => {
+                hideLoading();
+                console.error('Error:', error);
+                alert('An error occurred while creating the truck');
+            });
+        });
+    });
+    </script>
+
+
+    <script>
+        document.addEventListener('DOMContentLoaded', function() {
+            const createTrailerBtns = document.querySelectorAll('.create-trailer-btn');
+            const trailerModal = document.getElementById('trailer-modal');
+            const closeModal = document.getElementById('close-trailer-modal');
+            const cancelTrailer = document.getElementById('cancel-trailer');
+            const trailerForm = document.getElementById('trailer-form');
+            let currentTargetSelect = null; // Will hold the current trailer select being targeted
+            
+            // Show modal - handle multiple trailer buttons
+            createTrailerBtns.forEach(btn => {
+                btn.addEventListener('click', function() {
+                    const target = this.getAttribute('data-target');
+                    // Get the correct trailer select field based on target
+                    if (target === 'trailer1') {
+                        currentTargetSelect = document.getElementById('{{ form.trailer1.id_for_label }}');
+                    } else if (target === 'trailer2') {
+                        currentTargetSelect = document.getElementById('{{ form.trailer2.id_for_label }}');
+                    }
+                    trailerModal.classList.remove('hidden');
+                    document.getElementById('trailer-brand').focus();
+                    clearErrors();
+                });
+            });
+            
+            // Hide modal
+            function hideModal() {
+                trailerModal.classList.add('hidden');
+                trailerForm.reset();
+                clearErrors();
+                hideLoading();
+                currentTargetSelect = null;
+            }
+            
+            closeModal.addEventListener('click', hideModal);
+            cancelTrailer.addEventListener('click', hideModal);
+            
+            // Close modal when clicking outside
+            trailerModal.addEventListener('click', function(e) {
+                if (e.target === trailerModal) {
+                    hideModal();
+                }
+            });
+            
+            // Clear errors
+            function clearErrors() {
+                document.getElementById('trailer-brand-error').classList.add('hidden');
+                document.getElementById('trailer-license-plate-error').classList.add('hidden');
+                document.getElementById('trailer-color-error').classList.add('hidden');
+                document.getElementById('trailer-brand').classList.remove('border-red-300');
+                document.getElementById('trailer-license-plate').classList.remove('border-red-300');
+                document.getElementById('trailer-color').classList.remove('border-red-300');
+            }
+            
+            // Show loading state
+            function showLoading() {
+                document.querySelector('.trailer-btn-text').textContent = 'Creating...';
+                document.querySelector('.trailer-loading').classList.remove('hidden');
+                document.getElementById('save-trailer').disabled = true;
+            }
+            
+            // Hide loading state
+            function hideLoading() {
+                document.querySelector('.trailer-btn-text').textContent = 'Create Trailer';
+                document.querySelector('.trailer-loading').classList.add('hidden');
+                document.getElementById('save-trailer').disabled = false;
+            }
+            
+            // Handle form submission
+            trailerForm.addEventListener('submit', function(e) {
+                e.preventDefault();
+                
+                clearErrors();
+                showLoading();
+                
+                const formData = new FormData(trailerForm);
+                
+                fetch('{% url "scale:trailer_create_ajax" %}', {
+                    method: 'POST',
+                    body: formData,
+                    headers: {
+                        'X-CSRFToken': document.querySelector('[name=csrfmiddlewaretoken]').value,
+                    }
+                })
+                .then(response => response.json())
+                .then(data => {
+                    hideLoading();
+                    
+                    if (data.success) {
+                        // Add new trailer to the correct select option
+                        if (currentTargetSelect) {
+                            const newOption = new Option(data.trailer.license_plate, data.trailer.id, true, true);
+                            currentTargetSelect.add(newOption);
+                        }
+                        
+                        // Show success message (you can replace this with a toast if preferred)
+                        alert(data.message);
+                        
+                        // Hide modal
+                        hideModal();
+                        
+                    } else {
+                        // Handle errors
+                        if (data.errors) {
+                            for (const [field, error] of Object.entries(data.errors)) {
+                                const errorElement = document.getElementById(`trailer-${field}-error`);
+                                const inputElement = document.getElementById(`trailer-${field}`);
+                                if (errorElement && inputElement) {
+                                    errorElement.textContent = error;
+                                    errorElement.classList.remove('hidden');
+                                    inputElement.classList.add('border-red-300');
+                                }
+                            }
+                        } else {
+                            alert(data.message || 'An error occurred while creating the trailer');
+                        }
+                    }
+                })
+                .catch(error => {
+                    hideLoading();
+                    console.error('Error:', error);
+                    alert('An error occurred while creating the trailer');
+                });
+            });
+        });
+        </script>
+
+
 {% endblock %}
