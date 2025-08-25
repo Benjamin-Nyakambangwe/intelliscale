@@ -193,8 +193,8 @@ def connect_scale(scale):
 def get_weight(request, scale_id):
     if request.method == 'POST':
         print(f"Getting weight for scale {scale_id}")
-        
         weight = random.randint(500, 2000)
+        print(f"Weight: {weight}")
         return JsonResponse({
             'success': True,
             'weight': weight
@@ -1395,24 +1395,24 @@ def print_delivery_note(request, pk):
     elements.append(vehicle_table)
     
     # Notes section
-    if delivery_note.notes:
-        elements.append(Paragraph("Notes", section_style))
-        notes_para = Paragraph(delivery_note.notes, ParagraphStyle(
-            'Notes',
-            parent=styles['Normal'],
-            fontSize=10,
-            fontName='Helvetica',
-            leftIndent=10,
-            rightIndent=10,
-            spaceBefore=5,
-            spaceAfter=10,
-            borderWidth=1,
-            borderColor=colors.HexColor('#d1d5db'),
-            borderPadding=10,
-            backColor=colors.HexColor('#fffbeb'),
-            textColor=colors.HexColor('#374151')
-        ))
-        elements.append(notes_para)
+    # if delivery_note.notes:
+    #     elements.append(Paragraph("Notes", section_style))
+    #     notes_para = Paragraph(delivery_note.notes, ParagraphStyle(
+    #         'Notes',
+    #         parent=styles['Normal'],
+    #         fontSize=10,
+    #         fontName='Helvetica',
+    #         leftIndent=10,
+    #         rightIndent=10,
+    #         spaceBefore=5,
+    #         spaceAfter=10,
+    #         borderWidth=1,
+    #         borderColor=colors.HexColor('#d1d5db'),
+    #         borderPadding=10,
+    #         backColor=colors.HexColor('#fffbeb'),
+    #         textColor=colors.HexColor('#374151')
+    #     ))
+    #     elements.append(notes_para)
     
     # Associated weighing records
     weighing_records = delivery_note.weighingrecord_set.all()
@@ -1420,7 +1420,7 @@ def print_delivery_note(request, pk):
         elements.append(Paragraph("Associated Weighing Records", section_style))
         
         records_data = [
-            ['ID', 'Date & Time', 'Product', 'Gross Weight', 'Net Weight', 'Unit', 'Operator']
+            ['ID', 'Date & Time', 'Product', 'Gross Weight', 'Tare Weight', 'Net Weight', 'Unit']
         ]
         
         for record in weighing_records:
@@ -1429,9 +1429,10 @@ def print_delivery_note(request, pk):
                 record.timestamp.strftime('%m/%d/%Y\n%I:%M %p'),
                 record.product.name if record.product else 'N/A',
                 f"{record.gross_weight:.2f}",
+                f"{record.tare_weight:.2f}",
                 f"{record.net_weight:.2f}",
                 record.unit_of_measure,
-                f"{record.user.first_name} {record.user.last_name}"[:15] + "..." if len(f"{record.user.first_name} {record.user.last_name}") > 15 else f"{record.user.first_name} {record.user.last_name}"
+                # f"{record.user.first_name} {record.user.last_name}"[:15] + "..." if len(f"{record.user.first_name} {record.user.last_name}") > 15 else f"{record.user.first_name} {record.user.last_name}"
             ])
         
         records_table = Table(records_data, colWidths=[0.6*inch, 1.1*inch, 1.3*inch, 0.9*inch, 0.9*inch, 0.6*inch, 1*inch])
