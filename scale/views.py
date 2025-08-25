@@ -219,7 +219,8 @@ def get_weight(request, scale_id):
                     # Read response
                     line = ser.readline()
                     # weight_str = line.decode(errors='ignore').strip()
-                    weight_str = line.decode('utf-8')[7: 14].strip()
+                    # weight_str = line.decode('utf-8')[7: 14].strip()
+                    weight_str = line.decode('utf-8')[0: 5].strip()
 
                     print('Weight String: ', weight_str)
                     
