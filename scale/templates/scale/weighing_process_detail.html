@@ -97,6 +97,16 @@
                         </dd>
                     </div>
                     <div>
+                        <dt class="text-sm font-medium text-zinc-500">Tare Weight</dt>
+                        <dd class="mt-1 text-sm text-zinc-900">
+                            {% if weighing_process.tare_weight %}
+                                {{ weighing_process.tare_weight }} kg
+                            {% else %}
+                                <span class="text-zinc-400 italic">Not specified</span>
+                            {% endif %}
+                        </dd>
+                    </div>
+                    <div>
                         <dt class="text-sm font-medium text-zinc-500">Weight Rounding</dt>
                         <dd class="mt-1 text-sm text-zinc-900">
                             {% if weighing_process.weight_rounding %}

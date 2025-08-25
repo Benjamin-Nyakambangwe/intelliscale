@@ -36,6 +36,7 @@ class WeighingProcess(models.Model):
     min_weight = models.DecimalField(max_digits=10, decimal_places=2, blank=True, null=True)
     weight_rounding = models.IntegerField(blank=True, null=True, choices=WEIGHT_ROUNDING_CHOICES, default=2)
     allow_manual_entry = models.BooleanField(default=False)
+    tare_weight = models.DecimalField(max_digits=10, decimal_places=2, blank=True, null=True, default=0)
     
     def __str__(self):
         return self.name

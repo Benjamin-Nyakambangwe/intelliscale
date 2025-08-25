@@ -331,6 +331,7 @@ def weighing_station(request):
     min_weight = None
     max_weight = None
     allow_manual_entry = False
+    process_tare_weight = None
     if processes.exists():
         # Get from the first process (or you could use specific logic to choose which process)
         active_process = processes.first()
@@ -338,11 +339,13 @@ def weighing_station(request):
         max_weight = active_process.max_weight
         allow_manual_entry = active_process.allow_manual_entry
         weight_rounding = active_process.weight_rounding
+        process_tare_weight = active_process.tare_weight
     
     print('Min Weight: ', min_weight)
     print('Max Weight: ', max_weight)
     print('Allow Manual Entry: ', allow_manual_entry)
     print('Weight Rounding: ', weight_rounding)
+    print('Process Tare Weight: ', process_tare_weight)
     # Get custom fields data for all processes
     process_custom_fields = {}
     for process in processes:
@@ -460,7 +463,8 @@ def weighing_station(request):
         'delivery_notes': delivery_notes,
         'process_custom_fields': json.dumps(process_custom_fields),
         'unsynced_count': WeighingRecord.objects.filter(is_synced=False).count(),
-        'allow_manual_entry': allow_manual_entry
+        'allow_manual_entry': allow_manual_entry,
+        'process_tare_weight': process_tare_weight
     }
     
     return render(request, 'scale/weighing_station.html', context)

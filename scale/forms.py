@@ -88,6 +88,7 @@ class WeighingProcessForm(forms.ModelForm):
             'erp_target_model',
             'max_weight',
             'min_weight',
+            'tare_weight',
             'weight_rounding',
             'allow_manual_entry',
             'is_active'
@@ -113,6 +114,9 @@ class WeighingProcessForm(forms.ModelForm):
             'class': 'block w-full rounded-md border-zinc-300 shadow-sm focus:border-blue-500 focus:ring-blue-500 sm:text-sm p-2'
         }),
         'min_weight': forms.NumberInput(attrs={
+            'class': 'block w-full rounded-md border-zinc-300 shadow-sm focus:border-blue-500 focus:ring-blue-500 sm:text-sm p-2'
+        }),
+        'tare_weight': forms.NumberInput(attrs={
             'class': 'block w-full rounded-md border-zinc-300 shadow-sm focus:border-blue-500 focus:ring-blue-500 sm:text-sm p-2'
         }),
         'weight_rounding': forms.NumberInput(attrs={
