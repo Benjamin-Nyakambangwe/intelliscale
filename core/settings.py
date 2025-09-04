@@ -1,4 +1,5 @@
 from pathlib import Path
+from celery.schedules import crontab
 import os
 
 # Build paths inside the project like this: BASE_DIR / 'subdir'.
@@ -130,3 +131,12 @@ MEDIA_ROOT = os.path.join(BASE_DIR, 'media/')
 # https://docs.djangoproject.com/en/5.2/ref/settings/#default-auto-field
 
 DEFAULT_AUTO_FIELD = 'django.db.models.BigAutoField'
+
+
+CELERY_BEAT_SCHEDULE = {
+    'sync-odoo-delivery-notes': {
+        'task': 'scale.tasks.sync_odoo_delivery_notes',
+        'schedule': crontab(minute='*/5'),  # Every 5 minutes
+        # Or use: 'schedule': 60.0,  # Every 60 seconds
+    },
+}

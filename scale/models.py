@@ -134,6 +134,10 @@ class DeliveryNote(models.Model):
     sync_error_message = models.TextField(blank=True)
     notes = models.TextField(blank=True)
     
+    partner_id = models.IntegerField(null=True, blank=True, unique=True)
+    odoo_data = models.JSONField(default=dict, blank=True)
+    odoo_id = models.IntegerField(null=True, blank=True, unique=True)
+    
     driver = models.ForeignKey(Driver, on_delete=models.CASCADE, blank=True, null=True)
     truck = models.ForeignKey(Truck, on_delete=models.CASCADE, blank=True, null=True)
     trailer1 = models.ForeignKey(Trailer, on_delete=models.CASCADE, related_name='trailer1', blank=True, null=True)
@@ -169,8 +173,34 @@ class DeliveryNote(models.Model):
         filename = f'qr_{self.delivery_note_number}_{self.pk or "new"}.png'
         self.qr_code.save(filename, File(buffer), save=False)
         buffer.close()
+        
     def __str__(self):
         return f"{self.delivery_note_number}"
+    
+    def get_grower_name(self):
+        """Get grower name from Odoo data"""
+        return self.odoo_data.get('grower_name', '')
+    
+    def get_grower_number(self):
+        """Get grower number from Odoo data"""
+        return self.odoo_data.get('grower_number', '')
+    
+    def get_bales(self):
+        """Get bales list from Odoo data"""
+        return self.odoo_data.get('bales', [])
+    
+    def get_total_mass(self):
+        """Get total mass from Odoo data"""
+        return self.odoo_data.get('total_mass', 0)
+    
+    def get_bale_count(self):
+        """Get number of bales"""
+        return self.odoo_data.get('number_of_bales', 0)
+    
+    @property
+    def is_odoo_synced(self):
+        """Check if this record came from Odoo"""
+        return self.odoo_id is not None
     
 
 class ErpSystem(models.Model):
