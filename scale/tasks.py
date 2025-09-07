@@ -13,13 +13,22 @@ def sync_odoo_delivery_notes():
     try:
         # Fetch from Odoo API
         response = requests.get(
-            'https://your-odoo-instance.com/api/delivery-notes',  # Your Odoo API endpoint
-            headers={'Authorization': 'Bearer your-api-key'},
+            'http://localhost:8069/api/grower-delivery-notes',
+            params={'include_bales': 'true'},
+            headers={
+                'User-Agent': 'insomnia/11.5.0',
+                # Add cookie authentication if needed
+                # 'Cookie': 'your-session-cookie-here'
+            },
             timeout=30
         )
         
         if response.status_code != 200:
-            logger.error(f"Odoo API error: {response.status_code}")
+            error_message = (
+                f"Odoo API error: Status {response.status_code} for URL {response.url}. "
+                f"Response: {response.text}"
+            )
+            logger.error(error_message)
             return f"API Error: {response.status_code}"
         
         odoo_data = response.json()
@@ -66,15 +75,19 @@ def sync_single_delivery_note(odoo_record):
         # Update with Odoo data
         delivery_note.odoo_data = odoo_record
         delivery_note.delivery_note_number = document_number
-        delivery_note.partner_id = odoo_record['grower_number']
+        # Note: partner_id is IntegerField, but grower_number is string like "V342819"
+        # Store grower_number in odoo_data, extract numeric part if needed
+        grower_number = odoo_record.get('grower_number', '')
+        if grower_number.startswith('V') and grower_number[1:].isdigit():
+            delivery_note.partner_id = int(grower_number[1:])  # Extract numeric part
         delivery_note.is_synced = True
         delivery_note.last_sync_attempt = timezone.now()
         delivery_note.sync_error_message = ''
         
-        # Map Odoo state to your status if needed
-        if odoo_record['state'] in ['laid', 'printing']:
+        # Map Odoo state to your status
+        if odoo_record['state'] in ['open', 'printing']:
             delivery_note.status = 'Open'
-        else:
+        else:  # 'closed'
             delivery_note.status = 'Closed'
         
         delivery_note.save()

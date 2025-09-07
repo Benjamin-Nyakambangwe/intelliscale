@@ -245,7 +245,7 @@
                 </div>
             </div>
 
-            <div class="bg-white shadow rounded-lg overflow-hidden border border-zinc-200">
+            <div id="delivery-note-selection-card" class="bg-white shadow rounded-lg overflow-hidden border border-zinc-200">
                 <div class="px-6 py-5 border-b border-zinc-200">
                     <h2 class="text-lg font-medium text-zinc-900">DELIVERY NOTE {% if processes.0.process_type == 'WeighBridge' %}<span class="text-red-500 text-sm">(Required)</span>{% endif %}</h2>
                 </div>
@@ -268,6 +268,66 @@
                         </div>
                     </div>
                 </div>
+            </div>
+
+            <!-- Active Delivery Note for CTL Workflow -->
+            <div id="active-delivery-note-card" class="bg-white shadow rounded-lg overflow-hidden border border-zinc-200 {% if not active_delivery_note %}hidden{% endif %}">
+                <div class="px-6 py-5 border-b border-zinc-200 bg-green-50">
+                    <div class="flex flex-col items-center justify-between">
+                        <h2 class="text-md font-medium text-zinc-900">ACTIVE DNOTE</h2>
+                        <div class="flex items-center text-green-600">
+                            <svg class="w-5 h-5 mr-1" fill="currentColor" viewBox="0 0 20 20">
+                                <path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clip-rule="evenodd"></path>
+                            </svg>
+                            <span class="text-sm font-medium">Scanning in Progress</span>
+                        </div>
+                    </div>
+                </div>
+                <div class="p-6">
+                    {% if active_delivery_note %}
+                    <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                        <div>
+                            <dt class="text-sm font-medium text-zinc-500">Delivery Note Number</dt>
+                            <dd class="mt-1 text-sm text-zinc-900 font-semibold" id="active-dnote-number">{{ active_delivery_note.delivery_note_number }}</dd>
+                        </div>
+                        <div>
+                            <dt class="text-sm font-medium text-zinc-500">Grower</dt>
+                            <dd class="mt-1 text-sm text-zinc-900" id="active-grower-name">{{ active_delivery_note.get_grower_name }}</dd>
+                        </div>
+                        <div>
+                            <dt class="text-sm font-medium text-zinc-500">Grower Number</dt>
+                            <dd class="mt-1 text-sm text-zinc-900" id="active-grower-number">{{ active_delivery_note.get_grower_number }}</dd>
+                        </div>
+                        <div>
+                            <dt class="text-sm font-medium text-zinc-500">Location</dt>
+                            <dd class="mt-1 text-sm text-zinc-900" id="active-location">{{ active_delivery_note.get_location_name }}</dd>
+                        </div>
+                        <div>
+                            <dt class="text-sm font-medium text-zinc-500">Selling Point</dt>
+                            <dd class="mt-1 text-sm text-zinc-900" id="active-selling-point">{{ active_delivery_note.get_selling_point_name }}</dd>
+                        </div>
+                        <div>
+                            <dt class="text-sm font-medium text-zinc-500">Preferred Sale Date</dt>
+                            <dd class="mt-1 text-sm text-zinc-900" id="active-sale-date">{{ active_delivery_note.get_preferred_sale_date }}</dd>
+                        </div>
+                    </div>
+                    
+                    <!-- Progress Bar -->
+                    <div class="mt-4">
+                        <div class="flex justify-between text-sm text-zinc-700 mb-1">
+                            <span>Progress</span>
+                            <span id="progress-text">{{ active_delivery_note.scanned_bales_count }} of {{ active_delivery_note.get_bale_count }} bales scanned</span>
+                        </div>
+                        <div class="w-full bg-zinc-200 rounded-full h-2">
+                            <div class="bg-green-600 h-2 rounded-full transition-all duration-300" 
+                                 id="progress-bar" 
+                                 style="width: {% if active_delivery_note.get_bale_count > 0 %}{% widthratio active_delivery_note.scanned_bales_count active_delivery_note.get_bale_count 100 %}%{% else %}0%{% endif %}"></div>
+                        </div>
+                    </div>
+                    {% endif %}
+                </div>
+                <!-- Hidden input to pass delivery note ID for CTL workflow -->
+                <input type="hidden" id="active-delivery-note-id" value="{% if active_delivery_note %}{{ active_delivery_note.id }}{% endif %}">
             </div>
 
             
@@ -311,7 +371,7 @@
                         <select id="process-select" name="process_id" class="block w-full rounded-md border-zinc-300 shadow-sm focus:border-blue-500 focus:ring-blue-500 sm:text-sm p-1">
                             <option value="">Select a process...</option>
                             {% for process in processes %}
-                                <option value="{{ process.id }}">{{ process.name }}</option>
+                                <option value="{{ process.id }}" data-process-type="{{ process.process_type }}">{{ process.name }}</option>
                             {% endfor %}
                         </select>
                     </div>
@@ -321,7 +381,7 @@
                         <div>
                             <label class="block text-sm font-medium text-zinc-700 mb-1">Weighing Process</label>
                             <div class="py-2 px-3 bg-zinc-100 rounded text-zinc-900">{{ processes.0.name }}</div>
-                            <input type="hidden" id="process-id-input" name="process_id" value="{{ processes.0.id }}">
+                            <input type="hidden" id="process-id-input" name="process_id" value="{{ processes.0.id }}" data-process-type="{{ processes.0.process_type }}">
                         </div>
                     {% elif processes|length == 0 %}
                         <div class="text-red-600 text-sm">No active weighing process available. Please activate a process.</div>
@@ -403,9 +463,12 @@
         const customFieldsContainer = document.getElementById('custom-fields-container');
 
         const activeProcessId = document.getElementById('process-id-input').value;
-        const processType = '{{ processes.0.process_type|default:"" }}';
+        const processIdInput = document.getElementById('process-id-input');
+        let processType = processIdInput ? processIdInput.getAttribute('data-process-type') : '{{ processes.0.process_type|default:"" }}';
         console.log('Active process ID:', activeProcessId);
         console.log('Process type:', processType);
+        console.log('Process input element:', processIdInput);
+        console.log('Data process type attribute:', processIdInput ? processIdInput.getAttribute('data-process-type') : 'No element found');
         
         // Parse process custom fields data from the template
         const processCustomFields = JSON.parse('{{ process_custom_fields|escapejs }}');
@@ -687,12 +750,21 @@
                 barcodeInput.removeAttribute('required');
                 if (barcodeLabel) {
                     barcodeLabel.textContent = 'Barcode (Optional)';
+                    barcodeLabel.classList.remove('text-blue-600');
+                }
+            } else if (processType === 'ctl_workflow') {
+                // CTL Workflow: barcode is required
+                barcodeInput.setAttribute('required', 'required');
+                if (barcodeLabel) {
+                    barcodeLabel.textContent = 'Barcode (Required for CTL Workflow)';
+                    barcodeLabel.classList.add('text-blue-600');
                 }
             } else {
                 // Other processes: barcode is required
                 barcodeInput.setAttribute('required', 'required');
                 if (barcodeLabel) {
                     barcodeLabel.textContent = 'Barcode (Required)';
+                    barcodeLabel.classList.remove('text-blue-600');
                 }
             }
         }
@@ -1175,9 +1247,12 @@
         }
         
         // Clear Form button should reset everything
-        clearBtn.addEventListener('click', function() {
-            clearAllFields();
-        });
+        const clearBtn = document.getElementById('clear-btn');
+        if (clearBtn) {
+            clearBtn.addEventListener('click', function() {
+                clearAllFields();
+            });
+        }
         
         // Form validation before submission
         document.getElementById('weighing-form').addEventListener('submit', function(event) {
@@ -1213,6 +1288,27 @@
                 document.getElementById('barcode-input').focus();
                 event.preventDefault();
                 return;
+            }
+            
+            // For CTL workflow, ensure we have an active delivery note
+            if (processType === 'ctl_workflow') {
+                const activeDeliveryNoteId = document.getElementById('active-delivery-note-id').value;
+                if (!activeDeliveryNoteId) {
+                    alert('No active delivery note. Please scan a barcode to activate a delivery note first.');
+                    document.getElementById('barcode-input').focus();
+                    event.preventDefault();
+                    return;
+                }
+                
+                // Add the active delivery note ID to the form
+                let deliveryNoteInput = document.querySelector('input[name="delivery_note_id"]');
+                if (!deliveryNoteInput) {
+                    deliveryNoteInput = document.createElement('input');
+                    deliveryNoteInput.type = 'hidden';
+                    deliveryNoteInput.name = 'delivery_note_id';
+                    this.appendChild(deliveryNoteInput);
+                }
+                deliveryNoteInput.value = activeDeliveryNoteId;
             }
             
             // Validate weight fields
@@ -1413,6 +1509,150 @@
         updateWeightLabel(false);
         toggleLiveWeightDisplay();
         updateBarcodeRequirement();
+
+        // CTL Workflow Functions
+        function updateDeliveryNoteVisibility() {
+            const deliveryNoteCard = document.getElementById('delivery-note-selection-card');
+            const activeDeliveryNoteCard = document.getElementById('active-delivery-note-card');
+            
+            console.log('updateDeliveryNoteVisibility called with processType:', processType);
+            console.log('deliveryNoteCard element:', deliveryNoteCard);
+            console.log('activeDeliveryNoteCard element:', activeDeliveryNoteCard);
+            
+            if (processType === 'ctl_workflow') {
+                console.log('CTL workflow detected - hiding delivery note selection');
+                // Hide delivery note selection for CTL workflow
+                if (deliveryNoteCard) {
+                    deliveryNoteCard.style.display = 'none';
+                }
+                // Active delivery note card visibility is controlled by backend
+            } else {
+                console.log('Other process type - showing delivery note selection');
+                // Show delivery note selection for other process types
+                if (deliveryNoteCard) {
+                    deliveryNoteCard.style.display = 'block';
+                }
+                if (activeDeliveryNoteCard) {
+                    activeDeliveryNoteCard.style.display = 'none';
+                }
+            }
+        }
+
+
+        // Handle process type changes
+        if (processSelect) {
+            processSelect.addEventListener('change', function() {
+                // Update global processType variable
+                const selectedOption = this.options[this.selectedIndex];
+                if (selectedOption && selectedOption.dataset.processType) {
+                    processType = selectedOption.dataset.processType;
+                    updateDeliveryNoteVisibility();
+                    updateBarcodeRequirement();
+                }
+            });
+        }
+
+        // Initialize visibility on page load
+        updateDeliveryNoteVisibility();
+
+        // Enhanced barcode handling for CTL workflow
+        barcodeInput.addEventListener('input', function() {
+            if (processType === 'ctl_workflow' && this.value.length >= 8) {
+                // Auto-detect delivery note for CTL workflow
+                handleCtlWorkflowBarcode(this.value);
+            }
+        });
+
+        function handleCtlWorkflowBarcode(barcode) {
+            if (!barcode.trim()) return;
+
+            // Make AJAX call to find delivery note by barcode
+            fetch('{% url "scale:find_delivery_note_by_barcode" %}', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/x-www-form-urlencoded',
+                    'X-CSRFToken': document.querySelector('[name=csrfmiddlewaretoken]').value
+                },
+                body: 'barcode=' + encodeURIComponent(barcode)
+            })
+            .then(response => response.json())
+            .then(data => {
+                if (data.success) {
+                    // Update active delivery note display
+                    updateActiveDeliveryNoteDisplay(data.delivery_note);
+                    showNotification(data.message, 'success');
+                } else {
+                    showNotification(data.message, 'error');
+                    // Clear barcode input if not found
+                    barcodeInput.value = '';
+                    barcodeInput.focus();
+                }
+            })
+            .catch(error => {
+                console.error('Error:', error);
+                showNotification('Error checking barcode', 'error');
+            });
+        }
+
+        function updateActiveDeliveryNoteDisplay(deliveryNote) {
+            const activeCard = document.getElementById('active-delivery-note-card');
+            const activeDeliveryNoteId = document.getElementById('active-delivery-note-id');
+            
+            console.log('updateActiveDeliveryNoteDisplay called with:', deliveryNote);
+            console.log('activeCard element:', activeCard);
+            console.log('activeDeliveryNoteId element:', activeDeliveryNoteId);
+            
+            // Show the active delivery note card
+            if (activeCard) {
+                activeCard.classList.remove('hidden');
+            }
+            
+            // Update delivery note ID in hidden input
+            if (activeDeliveryNoteId) {
+                activeDeliveryNoteId.value = deliveryNote.id;
+            }
+            
+            // Update display fields with null checks
+            const dnoteNumberEl = document.getElementById('active-dnote-number');
+            const growerNameEl = document.getElementById('active-grower-name');
+            const growerNumberEl = document.getElementById('active-grower-number');
+            const locationEl = document.getElementById('active-location');
+            const sellingPointEl = document.getElementById('active-selling-point');
+            const saleDateEl = document.getElementById('active-sale-date');
+            
+            if (dnoteNumberEl) dnoteNumberEl.textContent = deliveryNote.delivery_note_number;
+            if (growerNameEl) growerNameEl.textContent = deliveryNote.grower_name;
+            if (growerNumberEl) growerNumberEl.textContent = deliveryNote.grower_number;
+            if (locationEl) locationEl.textContent = deliveryNote.location_name;
+            if (sellingPointEl) sellingPointEl.textContent = deliveryNote.selling_point_name;
+            if (saleDateEl) saleDateEl.textContent = deliveryNote.preferred_sale_date;
+            
+            // Update progress
+            const progressText = document.getElementById('progress-text');
+            const progressBar = document.getElementById('progress-bar');
+            
+            if (progressText) {
+                progressText.textContent = `${deliveryNote.scanned_bales} of ${deliveryNote.total_bales} bales scanned`;
+            }
+            
+            if (progressBar) {
+                const percentage = deliveryNote.total_bales > 0 ? (deliveryNote.scanned_bales / deliveryNote.total_bales) * 100 : 0;
+                progressBar.style.width = percentage + '%';
+            }
+        }
+
+        function showNotification(message, type = 'info') {
+            const notification = document.createElement('div');
+            const bgColor = type === 'success' ? 'bg-green-500' : type === 'error' ? 'bg-red-500' : 'bg-blue-500';
+            
+            notification.className = `fixed top-4 right-4 ${bgColor} text-white px-4 py-2 rounded-md shadow-lg z-50`;
+            notification.textContent = message;
+            document.body.appendChild(notification);
+            
+            setTimeout(() => {
+                notification.remove();
+            }, 4000);
+        }
 
     });
 </script>

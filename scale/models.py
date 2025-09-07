@@ -46,7 +46,7 @@ class WeighingProcess(models.Model):
     min_weight = models.DecimalField(max_digits=10, decimal_places=2, blank=True, null=True)
     weight_rounding = models.IntegerField(blank=True, null=True, choices=WEIGHT_ROUNDING_CHOICES, default=2)
     allow_manual_entry = models.BooleanField(default=False)
-    process_type = models.CharField(max_length=100, blank=True, null=True, choices=[('WeighBridge', 'WeighBridge'),('Manual', 'Manual'), ('Automated', 'Automated')], default='WeighBridge')
+    process_type = models.CharField(max_length=100, blank=True, null=True, choices=[('WeighBridge', 'WeighBridge'),('Manual', 'Manual'), ('Automated', 'Automated'), ('ctl_workflow', 'CTL Workflow')], default='WeighBridge')
     
     def __str__(self):
         return self.name
@@ -134,9 +134,13 @@ class DeliveryNote(models.Model):
     sync_error_message = models.TextField(blank=True)
     notes = models.TextField(blank=True)
     
-    partner_id = models.IntegerField(null=True, blank=True, unique=True)
+    partner_id = models.IntegerField(null=True, blank=True)
     odoo_data = models.JSONField(default=dict, blank=True)
     odoo_id = models.IntegerField(null=True, blank=True, unique=True)
+    
+    # CTL Workflow fields
+    is_being_scanned = models.BooleanField(default=False, help_text="True when this delivery note is currently active in ctl_workflow")
+    scanned_bales_count = models.IntegerField(default=0, help_text="Number of bales scanned for this delivery note")
     
     driver = models.ForeignKey(Driver, on_delete=models.CASCADE, blank=True, null=True)
     truck = models.ForeignKey(Truck, on_delete=models.CASCADE, blank=True, null=True)
@@ -197,10 +201,57 @@ class DeliveryNote(models.Model):
         """Get number of bales"""
         return self.odoo_data.get('number_of_bales', 0)
     
+    def get_bale_count_delivered(self):
+        """Get number of bales delivered"""
+        return self.odoo_data.get('number_of_bales_delivered', 0)
+    
+    def get_percentage_completion(self):
+        """Get percentage completion"""
+        return self.odoo_data.get('percentage_completion', 0)
+    
+    def get_location_name(self):
+        """Get location name"""
+        return self.odoo_data.get('location_name', '')
+    
+    def get_selling_point_name(self):
+        """Get selling point name"""
+        return self.odoo_data.get('selling_point_name', '')
+    
+    def get_preferred_sale_date(self):
+        """Get preferred sale date"""
+        return self.odoo_data.get('preferred_sale_date', '')
+    
+    def get_state(self):
+        """Get Odoo state"""
+        return self.odoo_data.get('state', '')
+    
     @property
     def is_odoo_synced(self):
         """Check if this record came from Odoo"""
         return self.odoo_id is not None
+    
+    def find_bale_by_barcode(self, barcode):
+        """Find a bale in odoo_data by scale_barcode"""
+        bales = self.odoo_data.get('bales', [])
+        for bale in bales:
+            if bale.get('scale_barcode') == barcode:
+                return bale
+        return None
+    
+    def get_remaining_bales_count(self):
+        """Get number of bales remaining to be scanned"""
+        total_bales = self.odoo_data.get('number_of_bales', 0)
+        return max(0, total_bales - self.scanned_bales_count)
+    
+    def is_scanning_complete(self):
+        """Check if all bales have been scanned"""
+        return self.get_remaining_bales_count() == 0
+    
+    def can_accept_barcode(self, barcode):
+        """Check if this delivery note can accept the given barcode"""
+        if self.is_scanning_complete():
+            return False
+        return self.find_bale_by_barcode(barcode) is not None
     
 
 class ErpSystem(models.Model):
