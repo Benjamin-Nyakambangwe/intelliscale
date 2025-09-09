@@ -324,6 +324,20 @@
                                  style="width: {% if active_delivery_note.get_bale_count > 0 %}{% widthratio active_delivery_note.scanned_bales_count active_delivery_note.get_bale_count 100 %}%{% else %}0%{% endif %}"></div>
                         </div>
                     </div>
+                    
+                    <!-- Scanned Barcodes List -->
+                    {% if active_delivery_note.scanned_barcodes %}
+                    <div class="mt-4">
+                        <h4 class="text-sm font-medium text-zinc-700 mb-2">Scanned Barcodes ({{ active_delivery_note.scanned_barcodes|length }})</h4>
+                        <div class="max-h-32 overflow-y-auto bg-zinc-50 rounded-md p-2" id="scanned-barcodes-list">
+                            {% for barcode in active_delivery_note.scanned_barcodes %}
+                            <span class="inline-block bg-green-100 text-green-800 text-xs font-medium px-2 py-1 rounded mr-1 mb-1">
+                                {{ barcode }}
+                            </span>
+                            {% endfor %}
+                        </div>
+                    </div>
+                    {% endif %}
                     {% endif %}
                 </div>
                 <!-- Hidden input to pass delivery note ID for CTL workflow -->
@@ -1638,6 +1652,40 @@
             if (progressBar) {
                 const percentage = deliveryNote.total_bales > 0 ? (deliveryNote.scanned_bales / deliveryNote.total_bales) * 100 : 0;
                 progressBar.style.width = percentage + '%';
+            }
+            
+            // Update scanned barcodes list
+            updateScannedBarcodesList(deliveryNote.scanned_barcodes || []);
+        }
+
+        function updateScannedBarcodesList(scannedBarcodes) {
+            const listContainer = document.getElementById('scanned-barcodes-list');
+            if (!listContainer) return;
+            
+            // Clear existing content
+            listContainer.innerHTML = '';
+            
+            // Add each barcode as a badge
+            scannedBarcodes.forEach(barcode => {
+                const badge = document.createElement('span');
+                badge.className = 'inline-block bg-green-100 text-green-800 text-xs font-medium px-2 py-1 rounded mr-1 mb-1';
+                badge.textContent = barcode;
+                listContainer.appendChild(badge);
+            });
+            
+            // Show/hide the parent container based on whether there are barcodes
+            const parentContainer = listContainer.closest('.mt-4');
+            if (parentContainer) {
+                if (scannedBarcodes.length > 0) {
+                    parentContainer.style.display = 'block';
+                    // Update the count in the header
+                    const header = parentContainer.querySelector('h4');
+                    if (header) {
+                        header.textContent = `Scanned Barcodes (${scannedBarcodes.length})`;
+                    }
+                } else {
+                    parentContainer.style.display = 'none';
+                }
             }
         }
 

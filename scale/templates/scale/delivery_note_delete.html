@@ -1,0 +1,120 @@
+{% extends "scale/base.html" %}
+
+{% block title %}Delete Delivery Note | IntelliScale{% endblock %}
+
+{% block content %}
+<div>
+    <div class="mb-6">
+        <div class="flex items-center">
+            <a href="{% url 'scale:delivery_note_list' %}" class="mr-4 text-zinc-500 hover:text-zinc-700">
+                <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" viewBox="0 0 20 20" fill="currentColor">
+                    <path fill-rule="evenodd" d="M9.707 16.707a1 1 0 01-1.414 0l-6-6a1 1 0 010-1.414l6-6a1 1 0 011.414 1.414L5.414 9H17a1 1 0 110 2H5.414l4.293 4.293a1 1 0 010 1.414z" clip-rule="evenodd" />
+                </svg>
+            </a>
+            <h1 class="text-2xl font-semibold text-zinc-900">Delete Delivery Note</h1>
+        </div>
+    </div>
+
+    <div class="bg-white shadow rounded-lg overflow-hidden border border-zinc-200">
+        <div class="px-6 py-4 border-b border-zinc-200">
+            <h2 class="text-lg font-medium text-zinc-900">Confirm Deletion</h2>
+        </div>
+        
+        <div class="p-6">
+            <div class="flex items-center mb-6">
+                <div class="flex-shrink-0">
+                    <svg class="h-12 w-12 text-red-400" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor">
+                        <path stroke-linecap="round" stroke-linejoin="round" d="M12 9v3.75m-9.303 3.376c-.866 1.5.217 3.374 1.948 3.374h14.71c1.73 0 2.813-1.874 1.948-3.374L13.949 3.378c-.866-1.5-3.032-1.5-3.898 0L2.697 16.126zM12 15.75h.007v.008H12v-.008z" />
+                    </svg>
+                </div>
+                <div class="ml-4">
+                    <h3 class="text-lg font-medium text-zinc-900">Are you sure you want to delete this delivery note?</h3>
+                    <p class="mt-1 text-sm text-zinc-500">This action cannot be undone. All associated weighing records and data will be permanently removed.</p>
+                </div>
+            </div>
+
+            <!-- Delivery Note Details -->
+            <div class="bg-zinc-50 rounded-lg p-4 mb-6">
+                <h4 class="text-sm font-medium text-zinc-900 mb-3">Delivery Note Details</h4>
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <div>
+                        <dt class="text-sm font-medium text-zinc-500">Delivery Note Number</dt>
+                        <dd class="mt-1 text-sm text-zinc-900">{{ delivery_note.delivery_note_number }}</dd>
+                    </div>
+                    <div>
+                        <dt class="text-sm font-medium text-zinc-500">Status</dt>
+                        <dd class="mt-1 text-sm text-zinc-900">{{ delivery_note.status }}</dd>
+                    </div>
+                    <div>
+                        <dt class="text-sm font-medium text-zinc-500">Created By</dt>
+                        <dd class="mt-1 text-sm text-zinc-900">{{ delivery_note.created_by.username }}</dd>
+                    </div>
+                    <div>
+                        <dt class="text-sm font-medium text-zinc-500">Created Date</dt>
+                        <dd class="mt-1 text-sm text-zinc-900">{{ delivery_note.created_at|date:"M d, Y H:i" }}</dd>
+                    </div>
+                    {% if delivery_note.get_grower_name %}
+                    <div>
+                        <dt class="text-sm font-medium text-zinc-500">Grower</dt>
+                        <dd class="mt-1 text-sm text-zinc-900">{{ delivery_note.get_grower_name }} ({{ delivery_note.get_grower_number }})</dd>
+                    </div>
+                    {% endif %}
+                    {% if delivery_note.driver %}
+                    <div>
+                        <dt class="text-sm font-medium text-zinc-500">Driver</dt>
+                        <dd class="mt-1 text-sm text-zinc-900">{{ delivery_note.driver }}</dd>
+                    </div>
+                    {% endif %}
+                </div>
+            </div>
+
+            <!-- Warning about CTL Workflow data -->
+            {% if delivery_note.is_being_scanned or delivery_note.scanned_bales_count > 0 %}
+            <div class="bg-yellow-50 border border-yellow-200 rounded-md p-4 mb-6">
+                <div class="flex">
+                    <div class="flex-shrink-0">
+                        <svg class="h-5 w-5 text-yellow-400" viewBox="0 0 20 20" fill="currentColor">
+                            <path fill-rule="evenodd" d="M8.257 3.099c.765-1.36 2.722-1.36 3.486 0l5.58 9.92c.75 1.334-.213 2.98-1.742 2.98H4.42c-1.53 0-2.493-1.646-1.743-2.98l5.58-9.92zM11 13a1 1 0 11-2 0 1 1 0 012 0zm-1-8a1 1 0 00-1 1v3a1 1 0 002 0V6a1 1 0 00-1-1z" clip-rule="evenodd" />
+                        </svg>
+                    </div>
+                    <div class="ml-3">
+                        <h3 class="text-sm font-medium text-yellow-800">CTL Workflow Data Warning</h3>
+                        <div class="mt-2 text-sm text-yellow-700">
+                            <p>This delivery note contains CTL workflow scanning data:</p>
+                            <ul class="list-disc list-inside mt-1">
+                                {% if delivery_note.is_being_scanned %}
+                                <li>Currently being scanned</li>
+                                {% endif %}
+                                {% if delivery_note.scanned_bales_count > 0 %}
+                                <li>{{ delivery_note.scanned_bales_count }} bales have been scanned</li>
+                                {% endif %}
+                                {% if delivery_note.scanned_barcodes %}
+                                <li>{{ delivery_note.scanned_barcodes|length }} scanned barcodes will be lost</li>
+                                {% endif %}
+                            </ul>
+                            <p class="mt-2 font-medium">Deleting this delivery note will permanently remove all scanning progress.</p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            {% endif %}
+
+            <!-- Action Buttons -->
+            <div class="flex justify-end space-x-3">
+                <a href="{% url 'scale:delivery_note_list' %}" class="inline-flex items-center justify-center whitespace-nowrap rounded-md text-sm font-medium border border-zinc-200 bg-white hover:bg-zinc-100 hover:text-zinc-900 h-10 px-4 py-2">
+                    Cancel
+                </a>
+                <form method="post" class="inline">
+                    {% csrf_token %}
+                    <button type="submit" class="inline-flex items-center justify-center whitespace-nowrap rounded-md text-sm font-medium bg-red-600 text-white hover:bg-red-700 h-10 px-4 py-2">
+                        <svg class="-ml-0.5 mr-1.5 h-4 w-4" fill="none" viewBox="0 0 24 24" stroke-width="1.75" stroke="currentColor">
+                            <path stroke-linecap="round" stroke-linejoin="round" d="M14.74 9l-.346 9m-4.788 0L9.26 9m9.968-3.21c.342.052.682.107 1.022.166m-1.022-.165L18.16 19.673a2.25 2.25 0 01-2.244 2.077H8.084a2.25 2.25 0 01-2.244-2.077L4.772 5.79m14.456 0a48.108 48.108 0 00-3.478-.397m-12 .562c.34-.059.68-.114 1.022-.165m0 0a48.11 48.11 0 013.478-.397m7.5 0v-.916c0-1.18-.91-2.164-2.09-2.201a51.964 51.964 0 00-3.32 0c-1.18.037-2.09 1.022-2.09 2.201v.916m7.5 0a48.667 48.667 0 00-7.5 0" />
+                        </svg>
+                        Delete Delivery Note
+                    </button>
+                </form>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

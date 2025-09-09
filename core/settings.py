@@ -138,6 +138,10 @@ CELERY_BEAT_SCHEDULE = {
         'schedule': crontab(minute='*/2'),  # Every 2 minutes
         # Or use: 'schedule': 60.0,  # Every 60 seconds
     },
+    'check-completed-delivery-notes': {
+        'task': 'scale.tasks.check_completed_delivery_notes',
+        'schedule': crontab(minute='*/1'),  # Every 1 minute
+    },
 }
 
 CELERY_BROKER_URL = 'redis://localhost:6379/0'

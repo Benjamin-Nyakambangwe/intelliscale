@@ -141,6 +141,7 @@ class DeliveryNote(models.Model):
     # CTL Workflow fields
     is_being_scanned = models.BooleanField(default=False, help_text="True when this delivery note is currently active in ctl_workflow")
     scanned_bales_count = models.IntegerField(default=0, help_text="Number of bales scanned for this delivery note")
+    scanned_barcodes = models.JSONField(default=list, blank=True, help_text="List of barcodes that have been scanned for this delivery note")
     
     driver = models.ForeignKey(Driver, on_delete=models.CASCADE, blank=True, null=True)
     truck = models.ForeignKey(Truck, on_delete=models.CASCADE, blank=True, null=True)
@@ -148,6 +149,7 @@ class DeliveryNote(models.Model):
     trailer2 = models.ForeignKey(Trailer, on_delete=models.CASCADE, related_name='trailer2', blank=True, null=True)
     qr_code = models.ImageField(upload_to='qr_codes/', blank=True, null=True)
     product = models.ForeignKey(Product, on_delete=models.CASCADE, blank=True, null=True)
+    
     
     def save(self, *args, **kwargs):
         # Generate QR code if it doesn't exist on save
@@ -232,9 +234,13 @@ class DeliveryNote(models.Model):
     
     def find_bale_by_barcode(self, barcode):
         """Find a bale in odoo_data by scale_barcode"""
+        # Trim whitespace from input barcode
+        barcode = str(barcode).strip() if barcode else ''
         bales = self.odoo_data.get('bales', [])
+        
         for bale in bales:
-            if bale.get('scale_barcode') == barcode:
+            scale_barcode = str(bale.get('scale_barcode', '')).strip()
+            if scale_barcode == barcode:
                 return bale
         return None
     
@@ -251,7 +257,25 @@ class DeliveryNote(models.Model):
         """Check if this delivery note can accept the given barcode"""
         if self.is_scanning_complete():
             return False
+        if self.has_barcode_been_scanned(barcode):
+            return False  # Already scanned
         return self.find_bale_by_barcode(barcode) is not None
+    
+    def has_barcode_been_scanned(self, barcode):
+        """Check if a barcode has already been scanned"""
+        barcode = str(barcode).strip() if barcode else ''
+        # Check both trimmed and original barcodes for safety
+        return barcode in self.scanned_barcodes or any(str(b).strip() == barcode for b in self.scanned_barcodes)
+    
+    def add_scanned_barcode(self, barcode):
+        """Add a barcode to the list of scanned barcodes"""
+        # Trim whitespace before storing
+        trimmed_barcode = str(barcode).strip() if barcode else ''
+        if not self.has_barcode_been_scanned(trimmed_barcode):
+            self.scanned_barcodes.append(trimmed_barcode)
+            self.scanned_bales_count += 1
+            return True  # New barcode added
+        return False  # Already existed
     
 
 class ErpSystem(models.Model):

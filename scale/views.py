@@ -345,10 +345,10 @@ def weighing_station(request):
         allow_manual_entry = active_process.allow_manual_entry
         weight_rounding = active_process.weight_rounding
     
-    print('Min Weight: ', min_weight)
-    print('Max Weight: ', max_weight)
-    print('Allow Manual Entry: ', allow_manual_entry)
-    print('Weight Rounding: ', weight_rounding)
+    # print('Min Weight: ', min_weight)
+    # print('Max Weight: ', max_weight)
+    # print('Allow Manual Entry: ', allow_manual_entry)
+    # print('Weight Rounding: ', weight_rounding)
     # Get custom fields data for all processes
     process_custom_fields = {}
     for process in processes:
@@ -405,41 +405,62 @@ def weighing_station(request):
             process = WeighingProcess.objects.get(pk=process_id)
             
             # Handle CTL Workflow logic
-            if process.process_type == 'ctl_workflow' and barcode:
-                # For CTL workflow, find delivery note by barcode
-                delivery_notes_with_barcode = DeliveryNote.objects.all()
-                found_delivery_note = None
-                
-                for dnote in delivery_notes_with_barcode:
-                    if dnote.find_bale_by_barcode(barcode):
-                        found_delivery_note = dnote
-                        break
-                
-                if found_delivery_note:
-                    # Check if this delivery note can accept this barcode
-                    if not found_delivery_note.can_accept_barcode(barcode):
-                        if found_delivery_note.is_scanning_complete():
-                            messages.error(request, f'Delivery note {found_delivery_note.delivery_note_number} is already complete.')
+            if process.process_type == 'ctl_workflow':
+                # Check if we have an active delivery note from the form
+                if delivery_note_id:
+                    # Use the active delivery note from the form
+                    delivery_note = get_object_or_404(DeliveryNote, pk=delivery_note_id)
+                    
+                    # Verify this barcode belongs to this delivery note
+                    if barcode and not delivery_note.can_accept_barcode(barcode):
+                        if delivery_note.is_scanning_complete():
+                            messages.error(request, f'Delivery note {delivery_note.delivery_note_number} is already complete.')
+                        elif delivery_note.has_barcode_been_scanned(barcode):
+                            messages.error(request, f'Bale {barcode} has already been scanned for delivery note {delivery_note.delivery_note_number}.')
                         else:
-                            messages.error(request, f'Barcode {barcode} not found in delivery note {found_delivery_note.delivery_note_number}.')
+                            messages.error(request, f'Barcode {barcode} not found in delivery note {delivery_note.delivery_note_number}.')
                         return redirect('scale:weighing_station')
+                        
+                elif barcode:
+                    # No active delivery note, search by barcode
+                    delivery_notes_with_barcode = DeliveryNote.objects.all()
+                    found_delivery_note = None
                     
-                    # Activate this delivery note for scanning if not already active
-                    currently_scanned = DeliveryNote.objects.filter(is_being_scanned=True).first()
-                    if currently_scanned and currently_scanned.id != found_delivery_note.id:
-                        messages.error(request, f'Another delivery note ({currently_scanned.delivery_note_number}) is currently being scanned.')
+                    for dnote in delivery_notes_with_barcode:
+                        if dnote.find_bale_by_barcode(barcode):
+                            found_delivery_note = dnote
+                            break
+                    
+                    if found_delivery_note:
+                        # Check if this delivery note can accept this barcode
+                        if not found_delivery_note.can_accept_barcode(barcode):
+                            if found_delivery_note.is_scanning_complete():
+                                messages.error(request, f'Delivery note {found_delivery_note.delivery_note_number} is already complete.')
+                            elif found_delivery_note.has_barcode_been_scanned(barcode):
+                                messages.error(request, f'Bale {barcode} has already been scanned for delivery note {found_delivery_note.delivery_note_number}.')
+                            else:
+                                messages.error(request, f'Barcode {barcode} not found in delivery note {found_delivery_note.delivery_note_number}.')
+                            return redirect('scale:weighing_station')
+                        
+                        # Activate this delivery note for scanning if not already active
+                        currently_scanned = DeliveryNote.objects.filter(is_being_scanned=True).first()
+                        if currently_scanned and currently_scanned.id != found_delivery_note.id:
+                            messages.error(request, f'Another delivery note ({currently_scanned.delivery_note_number}) is currently being scanned.')
+                            return redirect('scale:weighing_station')
+                        
+                        if not found_delivery_note.is_being_scanned:
+                            # Deactivate any other delivery notes
+                            DeliveryNote.objects.filter(is_being_scanned=True).update(is_being_scanned=False)
+                            found_delivery_note.is_being_scanned = True
+                            found_delivery_note.save()
+                        
+                        delivery_note = found_delivery_note
+                        
+                    else:
+                        messages.error(request, 'Barcode not found. Please scan the correct bale.')
                         return redirect('scale:weighing_station')
-                    
-                    if not found_delivery_note.is_being_scanned:
-                        # Deactivate any other delivery notes
-                        DeliveryNote.objects.filter(is_being_scanned=True).update(is_being_scanned=False)
-                        found_delivery_note.is_being_scanned = True
-                        found_delivery_note.save()
-                    
-                    delivery_note = found_delivery_note
-                    
                 else:
-                    messages.error(request, 'Barcode not found. Please scan the correct bale.')
+                    messages.error(request, 'No barcode provided for CTL workflow.')
                     return redirect('scale:weighing_station')
             elif delivery_note_id:
                 delivery_note = get_object_or_404(DeliveryNote, pk=delivery_note_id)
@@ -517,9 +538,13 @@ def weighing_station(request):
             
             # Handle CTL Workflow completion logic
             if process.process_type == 'ctl_workflow' and weighing_record and delivery_note:
-                # Increment scanned bales count
-                delivery_note.scanned_bales_count += 1
-                delivery_note.save()
+                # Add barcode to scanned list (this handles increment automatically)
+                if delivery_note.add_scanned_barcode(barcode):
+                    delivery_note.save()
+                    messages.success(request, f'Bale {barcode} scanned successfully.')
+                else:
+                    # This shouldn't happen due to can_accept_barcode check, but just in case
+                    messages.warning(request, f'Bale {barcode} was already scanned.')
                 
                 # Check if scanning is complete
                 if delivery_note.is_scanning_complete():
@@ -577,6 +602,8 @@ def weighing_station(request):
 
 
 def send_to_erp(barcode, net_weight, scale_id, weighing_record_id, request, process_type=None):
+    # Trim whitespace from barcode
+    barcode = str(barcode).strip() if barcode else ''
 
         
     
@@ -584,12 +611,12 @@ def send_to_erp(barcode, net_weight, scale_id, weighing_record_id, request, proc
     
     # Get company settings
     company_settings = CompanySettings.objects.first()
-    print('Company Settings: ', company_settings)
-    print('Company Settings ERP System: ', company_settings.erp_system.name)
-    print('Password: ', company_settings.erp_password)
-    print('Username: ', company_settings.erp_username)
-    print('API URL: ', company_settings.api_url)
-    print('Database Name: ', company_settings.database_name)
+    # print('Company Settings: ', company_settings)
+    # print('Company Settings ERP System: ', company_settings.erp_system.name)
+    # print('Password: ', company_settings.erp_password)
+    # print('Username: ', company_settings.erp_username)
+    # print('API URL: ', company_settings.api_url)
+    # print('Database Name: ', company_settings.database_name)
     
     # Parse URL into host and port
     # try:
@@ -614,8 +641,8 @@ def send_to_erp(barcode, net_weight, scale_id, weighing_record_id, request, proc
     
     # Check for a session id in the browser cookies
     session_id = request.COOKIES.get('session_id')
-    print('Session ID from cookies: ', session_id)
-    print('Session ID: ', session_id)
+    # print('Session ID from cookies: ', session_id)
+    # print('Session ID: ', session_id)
     if not session_id:
         try:
             url = f"{company_settings.api_url}/web/session/authenticate"
@@ -678,9 +705,9 @@ def send_to_erp(barcode, net_weight, scale_id, weighing_record_id, request, proc
         # Send to odoo
         pass
     
-        print("Sending to erp system")
+        # print("Sending to erp system")
         print(f"Sending barcode {barcode}, net weight {net_weight}, and scale id {scale_id} to erp system")
-        print('Session ID: ', session_id)
+        # print('Session ID: ', session_id)
         # session_id = request.COOKIES.get('erp_session_id')
         # print('Session ID: ', session_id)
         if session_id:
@@ -694,7 +721,7 @@ def send_to_erp(barcode, net_weight, scale_id, weighing_record_id, request, proc
                     url = company_settings.api_url + "/receiving/scaleserver/manual_scale/" + str(round(float(net_weight))) + "/" + barcode
                     print(f"Standard URL: {url}")
                 
-                print(f"Process type: {process_type}, Using URL: {url}")
+                # print(f"Process type: {process_type}, Using URL: {url}")
 
                 payload = {}
                 headers = {
@@ -817,7 +844,8 @@ def product_delete(request, pk):
 @login_required
 @user_passes_test(is_admin)
 def delivery_note_list(request):
-    delivery_notes = DeliveryNote.objects.all().order_by('delivery_note_number')
+    # Sort active dnotes (is_being_scanned=True) first, then by delivery_note_number
+    delivery_notes = DeliveryNote.objects.all().order_by('-is_being_scanned', 'delivery_note_number')
     return render(request, 'scale/delivery_note_list.html', {'delivery_notes': delivery_notes})
 
 @login_required
@@ -896,8 +924,34 @@ def delivery_note_delete(request, pk):
         messages.success(request, f'Delivery Note {name} was deleted successfully.')
         return redirect('scale:delivery_note_list')
     
-    # If not POST, redirect to detail page
-    return redirect('scale:delivery_note_detail', pk=pk)
+    # Show confirmation page on GET
+    context = {
+        'delivery_note': delivery_note,
+    }
+    return render(request, 'scale/delivery_note_delete.html', context)
+
+@login_required
+@user_passes_test(is_admin)
+def delivery_note_suspend(request, pk):
+    """Suspend an active delivery note (remove from being scanned)"""
+    if request.method == 'POST':
+        delivery_note = get_object_or_404(DeliveryNote, pk=pk)
+        
+        if delivery_note.is_being_scanned:
+            delivery_note.is_being_scanned = False
+            delivery_note.save()
+            
+            return JsonResponse({
+                'success': True,
+                'message': f'Delivery note {delivery_note.delivery_note_number} suspended successfully.'
+            })
+        else:
+            return JsonResponse({
+                'success': False,
+                'message': f'Delivery note {delivery_note.delivery_note_number} is not currently being scanned.'
+            })
+    
+    return JsonResponse({'success': False, 'message': 'Invalid request method.'})
 
 
 
@@ -1661,6 +1715,11 @@ def find_delivery_note_by_barcode(request):
                             'success': False, 
                             'message': f'Delivery note {dnote.delivery_note_number} is already complete'
                         })
+                    elif dnote.has_barcode_been_scanned(barcode):
+                        return JsonResponse({
+                            'success': False, 
+                            'message': f'Bale {barcode} has already been scanned for delivery note {dnote.delivery_note_number}'
+                        })
                     else:
                         return JsonResponse({
                             'success': False, 
@@ -1685,6 +1744,7 @@ def find_delivery_note_by_barcode(request):
                         'grower_number': dnote.get_grower_number(),
                         'total_bales': dnote.get_bale_count(),
                         'scanned_bales': dnote.scanned_bales_count,
+                        'scanned_barcodes': dnote.scanned_barcodes,
                         'remaining_bales': dnote.get_remaining_bales_count(),
                         'location_name': dnote.get_location_name(),
                         'selling_point_name': dnote.get_selling_point_name(),

@@ -43,12 +43,14 @@
                 <thead class="bg-zinc-50">
                     <tr>
                         <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-zinc-500 uppercase tracking-wider">Delivery Note #</th>
+                        <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-zinc-500 uppercase tracking-wider">Partner ID</th>
+                        {% comment %} <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-zinc-500 uppercase tracking-wider">Grower</th> {% endcomment %}
                         <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-zinc-500 uppercase tracking-wider">Created By</th>
                         <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-zinc-500 uppercase tracking-wider">Status</th>
                         <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-zinc-500 uppercase tracking-wider">Driver</th>
                         <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-zinc-500 uppercase tracking-wider">Truck</th>
-                        <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-zinc-500 uppercase tracking-wider">Trailer 1</th>
-                        <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-zinc-500 uppercase tracking-wider">Trailer 2</th>
+                        {% comment %} <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-zinc-500 uppercase tracking-wider">Trailer 1</th> {% endcomment %}
+                        {% comment %} <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-zinc-500 uppercase tracking-wider">Trailer 2</th> {% endcomment %}
                         <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-zinc-500 uppercase tracking-wider">Product</th>
                         {% comment %} <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-zinc-500 uppercase tracking-wider">Sync Status</th> {% endcomment %}
                         {% comment %} <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-zinc-500 uppercase tracking-wider">Created</th>
@@ -58,8 +60,20 @@
                 </thead>
                 <tbody class="bg-white divide-y divide-zinc-200">
                     {% for delivery_note in delivery_notes %}
-                    <tr class="hover:bg-zinc-50">
-                        <td class="px-6 py-4 whitespace-nowrap text-sm font-medium text-zinc-900">{{ delivery_note.delivery_note_number }}</td>
+                    <tr class="hover:bg-zinc-50 {% if delivery_note.is_being_scanned %}bg-blue-50 border-l-4 border-blue-500{% endif %}">
+                        <td class="px-6 py-4 whitespace-nowrap text-sm font-medium text-zinc-900">
+                            {{ delivery_note.delivery_note_number }}
+                            {% if delivery_note.is_being_scanned %}
+                                <span class="ml-2 inline-flex items-center rounded-md bg-blue-100 px-2 py-1 text-xs font-medium text-blue-700 ring-1 ring-inset ring-blue-600/20">
+                                    <svg class="mr-1 h-3 w-3" fill="currentColor" viewBox="0 0 20 20">
+                                        <path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clip-rule="evenodd" />
+                                    </svg>
+                                    ACTIVE
+                                </span>
+                            {% endif %}
+                        </td>
+                        <td class="px-6 py-4 whitespace-nowrap text-sm text-zinc-900">{{ delivery_note.partner_id|default:"N/A" }}</td>
+                        {% comment %} <td class="px-6 py-4 whitespace-nowrap text-sm text-zinc-900">{{ delivery_note.get_grower_name|default:"N/A" }}</td> {% endcomment %}
                         <td class="px-6 py-4 whitespace-nowrap text-sm text-zinc-900">{{ delivery_note.created_by.username }}</td>
                         <td class="px-6 py-4 whitespace-nowrap">
                             <span class="inline-flex items-center rounded-md px-2 py-1 text-xs font-medium ring-1 ring-inset
@@ -73,8 +87,8 @@
                         </td>
                         <td class="px-6 py-4 whitespace-nowrap text-sm text-zinc-900">{{ delivery_note.driver }}</td>
                         <td class="px-6 py-4 whitespace-nowrap text-sm text-zinc-900">{{ delivery_note.truck }}</td>
-                        <td class="px-6 py-4 whitespace-nowrap text-sm text-zinc-900">{{ delivery_note.trailer1 }}</td>
-                        <td class="px-6 py-4 whitespace-nowrap text-sm text-zinc-900">{{ delivery_note.trailer2 }}</td>
+                        {% comment %} <td class="px-6 py-4 whitespace-nowrap text-sm text-zinc-900">{{ delivery_note.trailer1 }}</td> {% endcomment %}
+                        {% comment %} <td class="px-6 py-4 whitespace-nowrap text-sm text-zinc-900">{{ delivery_note.trailer2 }}</td> {% endcomment %}
                         <td class="px-6 py-4 whitespace-nowrap text-sm text-zinc-900">{{ delivery_note.product }}</td>
                         {% comment %} <td class="px-6 py-4 whitespace-nowrap">
                             {% if delivery_note.is_synced %}
@@ -97,6 +111,14 @@
                         <td class="px-6 py-4 whitespace-nowrap text-sm text-zinc-900">{{ delivery_note.updated_at|date:"M d, Y H:i" }}</td> {% endcomment %}
                         <td class="px-6 py-4 whitespace-nowrap text-sm text-zinc-500">
                             <div class="flex space-x-2">
+                                {% if delivery_note.is_being_scanned %}
+                                <button onclick="suspendDeliveryNote({{ delivery_note.id }})" class="inline-flex items-center justify-center rounded-md text-xs font-medium ring-offset-white transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-zinc-950 focus-visible:ring-offset-2 disabled:pointer-events-none disabled:opacity-50 border border-orange-200 bg-orange-50 text-orange-700 hover:bg-orange-100 h-8 px-3 py-2">
+                                    <svg class="h-3.5 w-3.5" fill="none" viewBox="0 0 24 24" stroke-width="1.75" stroke="currentColor">
+                                        <path stroke-linecap="round" stroke-linejoin="round" d="M15.75 5.25v13.5m-7.5-13.5v13.5" />
+                                    </svg>
+                                    {% comment %} Suspend {% endcomment %}
+                                </button>
+                                {% endif %}
                                 <a href="{% url 'scale:delivery_note_detail' delivery_note.id %}" class="inline-flex items-center justify-center rounded-md text-xs font-medium ring-offset-white transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-zinc-950 focus-visible:ring-offset-2 disabled:pointer-events-none disabled:opacity-50 bg-zinc-900 text-zinc-50 hover:bg-zinc-900/90 h-8 px-3 py-2">
                                     <svg class="h-3.5 w-3.5" fill="none" viewBox="0 0 24 24" stroke-width="1.75" stroke="currentColor">
                                         <path stroke-linecap="round" stroke-linejoin="round" d="M2.036 12.322a1.012 1.012 0 010-.639C3.423 7.51 7.36 4.5 12 4.5c4.638 0 8.573 3.007 9.963 7.178.07.207.07.431 0 .639C20.577 16.49 16.64 19.5 12 19.5c-4.638 0-8.573-3.007-9.963-7.178z" />
@@ -116,7 +138,7 @@
                                 </svg>
                                 {% comment %} Print {% endcomment %}
                             </a>
-                                <a href="{% url 'scale:delivery_note_delete' delivery_note.id %}" class="inline-flex items-center justify-center rounded-md text-xs font-medium ring-offset-white transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-zinc-950 focus-visible:ring-offset-2 disabled:pointer-events-none disabled:opacity-50 border border-red-200 bg-red-50 text-red-700 hover:bg-red-100 h-8 px-3 py-2" onclick="return confirm('Are you sure you want to delete this delivery note?')">
+                                <a href="{% url 'scale:delivery_note_delete' delivery_note.id %}" class="inline-flex items-center justify-center rounded-md text-xs font-medium ring-offset-white transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-zinc-950 focus-visible:ring-offset-2 disabled:pointer-events-none disabled:opacity-50 border border-red-200 bg-red-50 text-red-700 hover:bg-red-100 h-8 px-3 py-2">
                                     <svg class="h-3.5 w-3.5" fill="none" viewBox="0 0 24 24" stroke-width="1.75" stroke="currentColor">
                                         <path stroke-linecap="round" stroke-linejoin="round" d="M14.74 9l-.346 9m-4.788 0L9.26 9m9.968-3.21c.342.052.682.107 1.022.166m-1.022-.165L18.16 19.673a2.25 2.25 0 01-2.244 2.077H8.084a2.25 2.25 0 01-2.244-2.077L4.772 5.79m14.456 0a48.108 48.108 0 00-3.478-.397m-12 .562c.34-.059.68-.114 1.022-.165m0 0a48.11 48.11 0 013.478-.397m7.5 0v-.916c0-1.18-.91-2.164-2.09-2.201a51.964 51.964 0 00-3.32 0c-1.18.037-2.09 1.022-2.09 2.201v.916m7.5 0a48.667 48.667 0 00-7.5 0" />
                                     </svg>
@@ -149,3 +171,47 @@
     </div>
 </div>
 {% endblock %}
+
+<script>
+function suspendDeliveryNote(deliveryNoteId) {
+    if (!confirm('Are you sure you want to suspend this delivery note? Scanning will be paused until a barcode is scanned again.')) {
+        return;
+    }
+    
+    fetch(`/delivery-notes/${deliveryNoteId}/suspend/`, {
+        method: 'POST',
+        headers: {
+            'X-CSRFToken': document.querySelector('[name=csrfmiddlewaretoken]').value,
+            'Content-Type': 'application/json'
+        }
+    })
+    .then(response => response.json())
+    .then(data => {
+        if (data.success) {
+            // Show success message
+            showNotification(data.message, 'success');
+            // Reload the page to reflect changes
+            window.location.reload();
+        } else {
+            showNotification(data.message, 'error');
+        }
+    })
+    .catch(error => {
+        console.error('Error:', error);
+        showNotification('Error suspending delivery note', 'error');
+    });
+}
+
+function showNotification(message, type = 'info') {
+    const notification = document.createElement('div');
+    const bgColor = type === 'success' ? 'bg-green-500' : type === 'error' ? 'bg-red-500' : 'bg-blue-500';
+    
+    notification.className = `fixed top-4 right-4 ${bgColor} text-white px-4 py-2 rounded-md shadow-lg z-50`;
+    notification.textContent = message;
+    document.body.appendChild(notification);
+    
+    setTimeout(() => {
+        notification.remove();
+    }, 4000);
+}
+</script>

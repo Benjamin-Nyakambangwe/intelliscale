@@ -3,7 +3,7 @@ from celery import shared_task
 import requests
 import logging
 from django.utils import timezone
-from .models import DeliveryNote
+from .models import DeliveryNote, CompanySettings
 
 logger = logging.getLogger(__name__)
 
@@ -11,10 +11,17 @@ logger = logging.getLogger(__name__)
 def sync_odoo_delivery_notes():
     """Fetch all delivery notes from Odoo and sync with Django"""
     try:
+        # Get company settings for API URL
+        company_settings = CompanySettings.objects.first()
+        if not company_settings or not company_settings.api_url:
+            logger.error("No company settings found or API URL not configured")
+            return "Error: API URL not configured"
+        
         # Fetch from Odoo API
         response = requests.get(
-            'http://localhost:8069/api/grower-delivery-notes',
-            params={'include_bales': 'true'},
+            f'{company_settings.api_url}/api/grower-delivery-notes',
+            params={'include_bales': 'true',
+                    'state': 'checked,laid'},
             headers={
                 'User-Agent': 'insomnia/11.5.0',
                 # Add cookie authentication if needed
@@ -85,7 +92,7 @@ def sync_single_delivery_note(odoo_record):
         delivery_note.sync_error_message = ''
         
         # Map Odoo state to your status
-        if odoo_record['state'] in ['open', 'printing']:
+        if odoo_record['state'] in ['checked', 'laid']:
             delivery_note.status = 'Open'
         else:  # 'closed'
             delivery_note.status = 'Closed'
@@ -111,3 +118,84 @@ def sync_single_delivery_note(odoo_record):
             pass
         
         raise  # Re-raise to be caught by parent function
+
+@shared_task
+def check_completed_delivery_notes():
+    """Check for delivery notes where all bales have been scanned and update their status"""
+    try:
+        # Find delivery notes that are fully scanned but still active
+        completed_dnotes = DeliveryNote.objects.filter(
+            is_being_scanned=False,  # Not currently being scanned
+            status='Open',  # Still marked as open
+            scanned_bales_count__gt=0  # Has some scanned bales
+        )
+
+        updated_count = 0
+        error_count = 0
+        
+        for dnote in completed_dnotes:
+            try:
+                # Check if all bales are scanned and Odoo state is still 'checked'
+                odoo_state = dnote.odoo_data.get('state', '').lower()
+                if dnote.is_scanning_complete() and odoo_state == 'checked':
+                    # Update status to completed and send notification to Odoo
+                    success = update_dnote_completion_status(dnote)
+                    if success:
+                        dnote.status = 'Closed'
+                        dnote.save()
+                        updated_count += 1
+                        logger.info(f"Updated delivery note {dnote.delivery_note_number} to completed status")
+                    else:
+                        error_count += 1
+                        logger.error(f"Failed to update Odoo status for delivery note {dnote.delivery_note_number}")
+                        
+            except Exception as e:
+                logger.error(f"Error processing delivery note {dnote.delivery_note_number}: {str(e)}")
+                error_count += 1
+        
+        result = f"Completed check: {updated_count} updated, {error_count} errors"
+        logger.info(result)
+        return result
+        
+    except Exception as e:
+        logger.error(f"Completed delivery notes check task failed: {str(e)}")
+        return f"Task failed: {str(e)}"
+
+def update_dnote_completion_status(delivery_note):
+    """Send a request to Odoo to update the delivery note status to laid"""
+    try:
+        # Get company settings for API URL
+        company_settings = CompanySettings.objects.first()
+        if not company_settings or not company_settings.api_url:
+            logger.error("No company settings found or API URL not configured")
+            return False
+        
+        url = f"{company_settings.api_url}/api/grower-delivery-notes/update-status"
+        
+        querystring = {
+            "document_number": delivery_note.delivery_note_number,
+            "status": "laid"
+        }
+        
+        payload = ""
+        
+        headers = {
+            "cookie": "frontend_lang=en_GB",
+            "User-Agent": "insomnia/11.5.0"
+        }
+        
+        response = requests.request("POST", url, data=payload, headers=headers, params=querystring)
+        
+        if response.status_code in [200, 201]:
+            logger.info(f"Successfully updated Odoo status to 'laid' for delivery note {delivery_note.delivery_note_number}")
+            return True
+        else:
+            logger.error(f"Failed to update Odoo status. Status: {response.status_code}, Response: {response.text}")
+            return False
+            
+    except requests.exceptions.RequestException as e:
+        logger.error(f"Network error when updating Odoo status for {delivery_note.delivery_note_number}: {str(e)}")
+        return False
+    except Exception as e:
+        logger.error(f"Unexpected error updating Odoo status for {delivery_note.delivery_note_number}: {str(e)}")
+        return False
