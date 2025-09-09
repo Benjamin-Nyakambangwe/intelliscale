@@ -10,7 +10,6 @@ urlpatterns = [
     path('dashboard/manager/', user_views.manager_dashboard, name='manager_dashboard'),
     path('dashboard/operator/', user_views.operator_dashboard, name='operator_dashboard'),
     path('dashboard/default/', user_views.default_dashboard, name='default_dashboard'),
-    path('analytics/', user_views.analytics_dashboard, name='analytics'),
     
     # Scale management URLs
     path('scales/', views.scale_list, name='scale_list'),
