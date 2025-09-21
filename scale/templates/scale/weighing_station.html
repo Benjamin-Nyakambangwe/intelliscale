@@ -1570,10 +1570,21 @@
         updateDeliveryNoteVisibility();
 
         // Enhanced barcode handling for CTL workflow
-        barcodeInput.addEventListener('input', function() {
-            if (processType === 'ctl_workflow' && this.value.length >= 8) {
+        //barcodeInput.addEventListener('input', function() {
+         //   if (processType === 'ctl_workflow' && this.value.length >=8) {
                 // Auto-detect delivery note for CTL workflow
-                handleCtlWorkflowBarcode(this.value);
+         //       handleCtlWorkflowBarcode(this.value);
+         //   }
+        //});
+       
+        let ctlScanTimeout;
+        barcodeInput.addEventListener('input', function() {
+            clearTimeout(ctlScanTimeout);
+            
+            if (processType === 'ctl_workflow' && this.value.length >= 8) {
+                ctlScanTimeout = setTimeout(() => {
+                    handleCtlWorkflowBarcode(this.value);
+                }, 2000); 
             }
         });
 
@@ -1693,13 +1704,35 @@
             const notification = document.createElement('div');
             const bgColor = type === 'success' ? 'bg-green-500' : type === 'error' ? 'bg-red-500' : 'bg-blue-500';
             
-            notification.className = `fixed top-4 right-4 ${bgColor} text-white px-4 py-2 rounded-md shadow-lg z-50`;
-            notification.textContent = message;
+            // Create notification container
+            notification.className = `fixed top-4 right-4 ${bgColor} text-white px-4 py-2 rounded-md shadow-lg z-50 flex items-center justify-between min-w-80`;
+            
+            // Create message text
+            const messageSpan = document.createElement('span');
+            messageSpan.textContent = message;
+            messageSpan.className = 'flex-1 mr-2';
+            
+            // Create close button for error messages
+            if (type === 'error') {
+                const closeButton = document.createElement('button');
+                closeButton.innerHTML = '×';
+                closeButton.className = 'text-white hover:text-gray-200 font-bold text-xl leading-none';
+                closeButton.onclick = () => notification.remove();
+                
+                notification.appendChild(messageSpan);
+                notification.appendChild(closeButton);
+            } else {
+                notification.appendChild(messageSpan);
+            }
+            
             document.body.appendChild(notification);
             
-            setTimeout(() => {
-                notification.remove();
-            }, 4000);
+            // Auto-remove only for non-error messages
+            if (type !== 'error') {
+                setTimeout(() => {
+                    notification.remove();
+                }, 4000);
+            }
         }
 
     });

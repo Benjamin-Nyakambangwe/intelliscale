@@ -3,6 +3,7 @@
 {% block title %}Delivery Note Management | IntelliScale{% endblock %}
 
 {% block content %}
+{% csrf_token %}
 <div>
     <div class="mb-6">
         <div class="flex justify-between items-center">
@@ -113,10 +114,10 @@
                             <div class="flex space-x-2">
                                 {% if delivery_note.is_being_scanned %}
                                 <button onclick="suspendDeliveryNote({{ delivery_note.id }})" class="inline-flex items-center justify-center rounded-md text-xs font-medium ring-offset-white transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-zinc-950 focus-visible:ring-offset-2 disabled:pointer-events-none disabled:opacity-50 border border-orange-200 bg-orange-50 text-orange-700 hover:bg-orange-100 h-8 px-3 py-2">
-                                    <svg class="h-3.5 w-3.5" fill="none" viewBox="0 0 24 24" stroke-width="1.75" stroke="currentColor">
+                                    <svg class="h-3.5 w-3.5 mr-1" fill="none" viewBox="0 0 24 24" stroke-width="1.75" stroke="currentColor">
                                         <path stroke-linecap="round" stroke-linejoin="round" d="M15.75 5.25v13.5m-7.5-13.5v13.5" />
                                     </svg>
-                                    {% comment %} Suspend {% endcomment %}
+                                    Suspend
                                 </button>
                                 {% endif %}
                                 <a href="{% url 'scale:delivery_note_detail' delivery_note.id %}" class="inline-flex items-center justify-center rounded-md text-xs font-medium ring-offset-white transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-zinc-950 focus-visible:ring-offset-2 disabled:pointer-events-none disabled:opacity-50 bg-zinc-900 text-zinc-50 hover:bg-zinc-900/90 h-8 px-3 py-2">
@@ -170,23 +171,46 @@
         {% endif %}
     </div>
 </div>
-{% endblock %}
 
 <script>
-function suspendDeliveryNote(deliveryNoteId) {
+document.addEventListener('DOMContentLoaded', function() {
+    // Make the function globally available
+    window.suspendDeliveryNote = function(deliveryNoteId) {
+    console.log('suspendDeliveryNote called with ID:', deliveryNoteId);
+    
     if (!confirm('Are you sure you want to suspend this delivery note? Scanning will be paused until a barcode is scanned again.')) {
         return;
     }
     
-    fetch(`/delivery-notes/${deliveryNoteId}/suspend/`, {
+    const csrfTokenElement = document.querySelector('[name=csrfmiddlewaretoken]');
+    if (!csrfTokenElement) {
+        console.error('CSRF token not found');
+        showNotification('CSRF token not found. Please refresh the page.', 'error');
+        return;
+    }
+    
+    const csrfToken = csrfTokenElement.value;
+    console.log('CSRF token found:', csrfToken ? 'Yes' : 'No');
+    
+    const url = `/scale/delivery-notes/${deliveryNoteId}/suspend/`;
+    console.log('Making request to:', url);
+    
+    fetch(url, {
         method: 'POST',
         headers: {
-            'X-CSRFToken': document.querySelector('[name=csrfmiddlewaretoken]').value,
+            'X-CSRFToken': csrfToken,
             'Content-Type': 'application/json'
         }
     })
-    .then(response => response.json())
+    .then(response => {
+        console.log('Response status:', response.status);
+        if (!response.ok) {
+            throw new Error(`HTTP error! status: ${response.status}`);
+        }
+        return response.json();
+    })
     .then(data => {
+        console.log('Response data:', data);
         if (data.success) {
             // Show success message
             showNotification(data.message, 'success');
@@ -198,20 +222,40 @@ function suspendDeliveryNote(deliveryNoteId) {
     })
     .catch(error => {
         console.error('Error:', error);
-        showNotification('Error suspending delivery note', 'error');
+        showNotification('Error suspending delivery note: ' + error.message, 'error');
     });
-}
+    };
 
-function showNotification(message, type = 'info') {
+    function showNotification(message, type = 'info') {
     const notification = document.createElement('div');
     const bgColor = type === 'success' ? 'bg-green-500' : type === 'error' ? 'bg-red-500' : 'bg-blue-500';
     
-    notification.className = `fixed top-4 right-4 ${bgColor} text-white px-4 py-2 rounded-md shadow-lg z-50`;
-    notification.textContent = message;
+    notification.className = `fixed top-4 right-4 ${bgColor} text-white px-4 py-2 rounded-md shadow-lg z-50 flex items-center justify-between min-w-80`;
+    
+    const messageSpan = document.createElement('span');
+    messageSpan.textContent = message;
+    messageSpan.className = 'flex-1 mr-2';
+    
+    if (type === 'error') {
+        const closeButton = document.createElement('button');
+        closeButton.innerHTML = '×';
+        closeButton.className = 'text-white hover:text-gray-200 font-bold text-xl leading-none';
+        closeButton.onclick = () => notification.remove();
+        
+        notification.appendChild(messageSpan);
+        notification.appendChild(closeButton);
+    } else {
+        notification.appendChild(messageSpan);
+    }
+    
     document.body.appendChild(notification);
     
-    setTimeout(() => {
-        notification.remove();
-    }, 4000);
-}
+    if (type !== 'error') {
+        setTimeout(() => {
+            notification.remove();
+        }, 4000);
+    }
+    };
+});
 </script>
+{% endblock %}
