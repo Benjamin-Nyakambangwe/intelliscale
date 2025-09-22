@@ -1166,18 +1166,18 @@
             // If a scale is selected, start polling
             if ($(this).val()) {
                 if (processType === 'WeighBridge') {
-                    weightPollingInterval = setInterval(updateLiveWeight, 5000); // Poll every 5 seconds for live weight
+                    weightPollingInterval = setInterval(updateLiveWeight, 300); // Poll every third of a second for live weight
                 } else {
-                    weightPollingInterval = setInterval(getWeight, 5000); // Poll every 5 seconds for direct weight
+                    weightPollingInterval = setInterval(getWeight, 300); // Poll every third of a second for direct weight
                 }
             }
         });
 
         $(window).on('load', function() {
             if (processType === 'WeighBridge') {
-                weightPollingInterval = setInterval(updateLiveWeight, 5000);
+                weightPollingInterval = setInterval(updateLiveWeight, 300);
             } else {
-                weightPollingInterval = setInterval(getWeight, 5000);
+                weightPollingInterval = setInterval(getWeight, 300);
             }
         });
 

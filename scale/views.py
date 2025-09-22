@@ -955,7 +955,119 @@ def delivery_note_suspend(request, pk):
     
     return JsonResponse({'success': False, 'message': 'Invalid request method.'})
 
+@login_required
+@user_passes_test(is_admin)
+def delivery_note_bale_recall(request, pk):
+    """Display the bale recall page for a delivery note"""
+    delivery_note = get_object_or_404(DeliveryNote, pk=pk)
+    
+    # Get all bales from odoo_data
+    bales = []
+    if delivery_note.odoo_data and 'bales' in delivery_note.odoo_data:
+        bales = delivery_note.odoo_data['bales']
+    
+    # Mark which bales have been scanned
+    scanned_barcodes = set(delivery_note.scanned_barcodes)
+    for bale in bales:
+        bale['is_scanned'] = bale.get('scale_barcode', '').strip() in scanned_barcodes
+    
+    context = {
+        'delivery_note': delivery_note,
+        'bales': bales,
+    }
+    return render(request, 'scale/delivery_note_bale_recall.html', context)
 
+@login_required
+@user_passes_test(is_admin)
+def recall_bale(request, pk):
+    """Handle individual bale recall requests"""
+    if request.method == 'POST':
+        delivery_note = get_object_or_404(DeliveryNote, pk=pk)
+        barcode = request.POST.get('barcode', '').strip()
+        
+        if not barcode:
+            return JsonResponse({
+                'success': False,
+                'message': 'Barcode is required.'
+            })
+        
+        # Check if barcode exists in delivery note's bales
+        bale_found = False
+        if delivery_note.odoo_data and 'bales' in delivery_note.odoo_data:
+            for bale in delivery_note.odoo_data['bales']:
+                if bale.get('scale_barcode', '').strip() == barcode:
+                    bale_found = True
+                    break
+        
+        if not bale_found:
+            return JsonResponse({
+                'success': False,
+                'message': f'Barcode {barcode} not found in delivery note {delivery_note.delivery_note_number}.'
+            })
+        
+        # Check if barcode has been scanned
+        if barcode not in delivery_note.scanned_barcodes:
+            return JsonResponse({
+                'success': False,
+                'message': f'Barcode {barcode} has not been scanned yet.'
+            })
+        
+        try:
+            # Send request to Odoo to update bale mass to 0
+            company_settings = CompanySettings.objects.first()
+            if not company_settings or not company_settings.api_url:
+                return JsonResponse({
+                    'success': False,
+                    'message': 'Company API settings not configured.'
+                })
+            
+            api_url = f"{company_settings.api_url}/api/bales/update-mass/?barcode={barcode}&mass=0"
+            response = requests.post(api_url, timeout=10)
+            
+            if response.status_code == 200:
+                # Success - update local database
+                # Remove barcode from scanned_barcodes
+                delivery_note.scanned_barcodes = [b for b in delivery_note.scanned_barcodes if b != barcode]
+                
+                # Decrement scanned_bales_count
+                if delivery_note.scanned_bales_count > 0:
+                    delivery_note.scanned_bales_count -= 1
+                
+                delivery_note.save()
+                
+                # Delete the weighing record
+                WeighingRecord.objects.filter(
+                    delivery_note=delivery_note,
+                    barcode=barcode
+                ).delete()
+                
+                return JsonResponse({
+                    'success': True,
+                    'message': f'Bale {barcode} has been successfully recalled.',
+                    'scanned_count': delivery_note.scanned_bales_count,
+                    'total_count': delivery_note.get_bale_count()
+                })
+            else:
+                return JsonResponse({
+                    'success': False,
+                    'message': f'Failed to update bale in Odoo. Status: {response.status_code}'
+                })
+                
+        except requests.RequestException as e:
+            return JsonResponse({
+                'success': False,
+                'message': f'Error communicating with Odoo: {str(e)}'
+            })
+        except Exception as e:
+            return JsonResponse({
+                'success': False,
+                'message': f'Unexpected error: {str(e)}'
+            })
+    
+    return JsonResponse({
+        'success': False,
+        'message': 'Invalid request method.'
+    })
 
 #################################################################################################
 # Weighing Record Management Views

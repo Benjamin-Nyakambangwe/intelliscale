@@ -1,0 +1,313 @@
+{% extends "scale/base.html" %}
+
+{% block title %}Recall Bales - {{ delivery_note.delivery_note_number }} | IntelliScale{% endblock %}
+
+{% block content %}
+<div>
+    <div class="mb-6">
+        <div class="flex items-center">
+            <a href="{% url 'scale:delivery_note_detail' delivery_note.id %}" class="mr-4 text-zinc-500 hover:text-zinc-700">
+                <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" viewBox="0 0 20 20" fill="currentColor">
+                    <path fill-rule="evenodd" d="M9.707 16.707a1 1 0 01-1.414 0l-6-6a1 1 0 010-1.414l6-6a1 1 0 011.414 1.414L5.414 9H17a1 1 0 110 2H5.414l4.293 4.293a1 1 0 010 1.414z" clip-rule="evenodd" />
+                </svg>
+            </a>
+            <h1 class="text-2xl font-semibold text-zinc-900">Recall Bales - {{ delivery_note.delivery_note_number }}</h1>
+        </div>
+    </div>
+
+    <!-- Notification Container -->
+    <div id="notification-container" class="mb-6"></div>
+
+    <!-- Delivery Note Summary -->
+    <div class="bg-white shadow rounded-lg overflow-hidden border border-zinc-200 mb-6">
+        <div class="px-6 py-4 border-b border-zinc-200 bg-blue-50">
+            <h2 class="text-lg font-medium text-zinc-900">Delivery Note Summary</h2>
+        </div>
+        <div class="p-6">
+            <div class="grid grid-cols-1 md:grid-cols-4 gap-6">
+                <div class="text-center">
+                    <div class="text-2xl font-bold text-blue-600">{{ delivery_note.get_bale_count }}</div>
+                    <div class="text-sm text-zinc-500">Total Bales</div>
+                </div>
+                <div class="text-center">
+                    <div class="text-2xl font-bold text-green-600" id="scanned-count">{{ delivery_note.scanned_bales_count }}</div>
+                    <div class="text-sm text-zinc-500">Scanned</div>
+                </div>
+                <div class="text-center">
+                    <div class="text-2xl font-bold text-orange-600" id="remaining-count">{{ delivery_note.get_remaining_bales_count }}</div>
+                    <div class="text-sm text-zinc-500">Remaining</div>
+                </div>
+                <div class="text-center">
+                    <div class="text-2xl font-bold text-red-600" id="recalled-count">0</div>
+                    <div class="text-sm text-zinc-500">Recalled</div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Bale Recall Form -->
+    <div class="bg-white shadow rounded-lg overflow-hidden border border-zinc-200 mb-6">
+        <div class="px-6 py-4 border-b border-zinc-200">
+            <h2 class="text-lg font-medium text-zinc-900">Recall Bale</h2>
+        </div>
+        <div class="p-6">
+            <form id="recall-form" class="space-y-4">
+                {% csrf_token %}
+                <div>
+                    <label for="barcode-input" class="block text-sm font-medium text-zinc-700 mb-2">
+                        Enter Barcode to Recall
+                    </label>
+                    <div class="flex space-x-3">
+                        <input 
+                            type="text" 
+                            id="barcode-input" 
+                            name="barcode" 
+                            class="flex-1 rounded-md border-zinc-300 shadow-sm focus:border-blue-500 focus:ring-blue-500 sm:text-sm"
+                            placeholder="Scan or enter barcode..."
+                            autocomplete="off"
+                        >
+                        <button 
+                            type="submit" 
+                            id="submit-btn"
+                            class="inline-flex items-center justify-center whitespace-nowrap rounded-md text-sm font-medium bg-red-600 text-white hover:bg-red-700 h-10 px-4 py-2 disabled:opacity-50 disabled:cursor-not-allowed"
+                        >
+                            <svg class="mr-2 h-4 w-4" fill="none" viewBox="0 0 24 24" stroke-width="1.75" stroke="currentColor">
+                                <path stroke-linecap="round" stroke-linejoin="round" d="M14.74 9l-.346 9m-4.788 0L9.26 9m9.968-3.21c.342.052.682.107 1.022.166m-1.022-.165L18.16 19.673a2.25 2.25 0 01-2.244 2.077H8.084a2.25 2.25 0 01-2.244-2.077L4.772 5.79m14.456 0a48.108 48.108 0 00-3.478-.397m-12 .562c.34-.059.68-.114 1.022-.165m0 0a48.11 48.11 0 013.478-.397m7.5 0v-.916c0-1.18-.91-2.164-2.09-2.201a51.964 51.964 0 00-3.32 0c-1.18.037-2.09 1.022-2.09 2.201v.916m7.5 0a48.667 48.667 0 00-7.5 0" />
+                            </svg>
+                            Recall Bale
+                        </button>
+                    </div>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- Bales List -->
+    <div class="bg-white shadow rounded-lg overflow-hidden border border-zinc-200">
+        <div class="px-6 py-4 border-b border-zinc-200">
+            <h2 class="text-lg font-medium text-zinc-900">All Bales</h2>
+        </div>
+        {% if bales %}
+        <div class="overflow-x-auto">
+            <table class="min-w-full divide-y divide-zinc-200">
+                <thead class="bg-zinc-50">
+                    <tr>
+                        <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-zinc-500 uppercase tracking-wider">Barcode</th>
+                        <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-zinc-500 uppercase tracking-wider">Group</th>
+                        <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-zinc-500 uppercase tracking-wider">Lot</th>
+                        <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-zinc-500 uppercase tracking-wider">Mass</th>
+                        <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-zinc-500 uppercase tracking-wider">Status</th>
+                    </tr>
+                </thead>
+                <tbody class="bg-white divide-y divide-zinc-200" id="bales-table-body">
+                    {% for bale in bales %}
+                    <tr class="hover:bg-zinc-50" data-barcode="{{ bale.scale_barcode }}">
+                        <td class="px-6 py-4 whitespace-nowrap text-sm font-mono text-zinc-900">{{ bale.scale_barcode }}</td>
+                        <td class="px-6 py-4 whitespace-nowrap text-sm text-zinc-900">{{ bale.group_number }}</td>
+                        <td class="px-6 py-4 whitespace-nowrap text-sm text-zinc-900">{{ bale.lot_number }}</td>
+                        <td class="px-6 py-4 whitespace-nowrap text-sm text-zinc-900">{{ bale.mass|default:"-" }}</td>
+                        <td class="px-6 py-4 whitespace-nowrap text-sm">
+                            {% if bale.is_scanned %}
+                                <span class="inline-flex items-center rounded-md bg-green-50 px-2 py-1 text-xs font-medium text-green-700 ring-1 ring-inset ring-green-600/20">
+                                    <svg class="mr-1 h-3.5 w-3.5 text-green-500" fill="none" viewBox="0 0 24 24" stroke-width="1.75" stroke="currentColor">
+                                        <path stroke-linecap="round" stroke-linejoin="round" d="M9 12.75L11.25 15 15 9.75M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+                                    </svg>
+                                    Scanned
+                                </span>
+                            {% else %}
+                                <span class="inline-flex items-center rounded-md bg-zinc-50 px-2 py-1 text-xs font-medium text-zinc-700 ring-1 ring-inset ring-zinc-600/20">
+                                    <svg class="mr-1 h-3.5 w-3.5 text-zinc-500" fill="none" viewBox="0 0 24 24" stroke-width="1.75" stroke="currentColor">
+                                        <path stroke-linecap="round" stroke-linejoin="round" d="M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+                                        <path stroke-linecap="round" stroke-linejoin="round" d="M9 9.563C9 9.252 9.252 9 9.563 9h4.874c.311 0 .563.252.563.563v4.874c0 .311-.252.563-.563.563H9.564A.562.562 0 019 14.437V9.564z" />
+                                    </svg>
+                                    Not Scanned
+                                </span>
+                            {% endif %}
+                        </td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+        {% else %}
+        <div class="px-6 py-12 text-center">
+            <svg xmlns="http://www.w3.org/2000/svg" class="mx-auto h-12 w-12 text-zinc-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M20 7l-8-4-8 4m16 0l-8 4m8-4v10l-8 4m0-10L4 7m8 4v10M4 7v10l8 4" />
+            </svg>
+            <h3 class="mt-2 text-sm font-medium text-zinc-900">No bales found</h3>
+            <p class="mt-1 text-sm text-zinc-500">This delivery note has no bales data.</p>
+        </div>
+        {% endif %}
+    </div>
+</div>
+
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    const form = document.getElementById('recall-form');
+    const barcodeInput = document.getElementById('barcode-input');
+    const submitBtn = document.getElementById('submit-btn');
+    const notificationContainer = document.getElementById('notification-container');
+    const scannedCountEl = document.getElementById('scanned-count');
+    const remainingCountEl = document.getElementById('remaining-count');
+    const recalledCountEl = document.getElementById('recalled-count');
+    
+    let recalledCount = 0;
+
+    // Show notification function
+    function showNotification(message, type = 'info') {
+        const notification = document.createElement('div');
+        notification.className = `rounded-md p-4 mb-4 ${
+            type === 'success' ? 'bg-green-50 border border-green-200 text-green-800' :
+            type === 'error' ? 'bg-red-50 border border-red-200 text-red-800' :
+            'bg-blue-50 border border-blue-200 text-blue-800'
+        }`;
+        
+        notification.innerHTML = `
+            <div class="flex">
+                <div class="flex-shrink-0">
+                    ${type === 'success' ? 
+                        '<svg class="h-5 w-5 text-green-400" viewBox="0 0 20 20" fill="currentColor"><path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clip-rule="evenodd" /></svg>' :
+                        type === 'error' ?
+                        '<svg class="h-5 w-5 text-red-400" viewBox="0 0 20 20" fill="currentColor"><path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zM8.707 7.293a1 1 0 00-1.414 1.414L8.586 10l-1.293 1.293a1 1 0 101.414 1.414L10 11.414l1.293 1.293a1 1 0 001.414-1.414L11.414 10l1.293-1.293a1 1 0 00-1.414-1.414L10 8.586 8.707 7.293z" clip-rule="evenodd" /></svg>' :
+                        '<svg class="h-5 w-5 text-blue-400" viewBox="0 0 20 20" fill="currentColor"><path fill-rule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7-4a1 1 0 11-2 0 1 1 0 012 0zM9 9a1 1 0 000 2v3a1 1 0 001 1h1a1 1 0 100-2v-3a1 1 0 00-1-1H9z" clip-rule="evenodd" /></svg>'
+                    }
+                </div>
+                <div class="ml-3">
+                    <p class="text-sm font-medium">${message}</p>
+                </div>
+                <div class="ml-auto pl-3">
+                    <div class="-mx-1.5 -my-1.5">
+                        <button type="button" class="inline-flex rounded-md p-1.5 focus:outline-none focus:ring-2 focus:ring-offset-2 ${
+                            type === 'success' ? 'text-green-500 hover:bg-green-100 focus:ring-green-600' :
+                            type === 'error' ? 'text-red-500 hover:bg-red-100 focus:ring-red-600' :
+                            'text-blue-500 hover:bg-blue-100 focus:ring-blue-600'
+                        }" onclick="this.parentElement.parentElement.parentElement.remove()">
+                            <span class="sr-only">Dismiss</span>
+                            <svg class="h-5 w-5" viewBox="0 0 20 20" fill="currentColor">
+                                <path fill-rule="evenodd" d="M4.293 4.293a1 1 0 011.414 0L10 8.586l4.293-4.293a1 1 0 111.414 1.414L11.414 10l4.293 4.293a1 1 0 01-1.414 1.414L10 11.414l-4.293 4.293a1 1 0 01-1.414-1.414L8.586 10 4.293 5.707a1 1 0 010-1.414z" clip-rule="evenodd" />
+                            </svg>
+                        </button>
+                    </div>
+                </div>
+            </div>
+        `;
+        
+        notificationContainer.appendChild(notification);
+        
+        // Auto-remove success notifications after 5 seconds
+        if (type === 'success') {
+            setTimeout(() => {
+                if (notification.parentNode) {
+                    notification.remove();
+                }
+            }, 5000);
+        }
+    }
+
+    // Update bale status in table
+    function updateBaleStatus(barcode, isScanned) {
+        const row = document.querySelector(`tr[data-barcode="${barcode}"]`);
+        if (row) {
+            const statusCell = row.querySelector('td:last-child');
+            if (statusCell) {
+                if (isScanned) {
+                    statusCell.innerHTML = `
+                        <span class="inline-flex items-center rounded-md bg-green-50 px-2 py-1 text-xs font-medium text-green-700 ring-1 ring-inset ring-green-600/20">
+                            <svg class="mr-1 h-3.5 w-3.5 text-green-500" fill="none" viewBox="0 0 24 24" stroke-width="1.75" stroke="currentColor">
+                                <path stroke-linecap="round" stroke-linejoin="round" d="M9 12.75L11.25 15 15 9.75M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+                            </svg>
+                            Scanned
+                        </span>
+                    `;
+                } else {
+                    statusCell.innerHTML = `
+                        <span class="inline-flex items-center rounded-md bg-zinc-50 px-2 py-1 text-xs font-medium text-zinc-700 ring-1 ring-inset ring-zinc-600/20">
+                            <svg class="mr-1 h-3.5 w-3.5 text-zinc-500" fill="none" viewBox="0 0 24 24" stroke-width="1.75" stroke="currentColor">
+                                <path stroke-linecap="round" stroke-linejoin="round" d="M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+                                <path stroke-linecap="round" stroke-linejoin="round" d="M9 9.563C9 9.252 9.252 9 9.563 9h4.874c.311 0 .563.252.563.563v4.874c0 .311-.252.563-.563.563H9.564A.562.562 0 019 14.437V9.564z" />
+                            </svg>
+                            Not Scanned
+                        </span>
+                    `;
+                }
+            }
+        }
+    }
+
+    // Update counts
+    function updateCounts(scannedCount, totalCount) {
+        scannedCountEl.textContent = scannedCount;
+        remainingCountEl.textContent = totalCount - scannedCount;
+        recalledCountEl.textContent = recalledCount;
+    }
+
+    // Handle form submission
+    form.addEventListener('submit', async function(e) {
+        e.preventDefault();
+        
+        const barcode = barcodeInput.value.trim();
+        if (!barcode) {
+            showNotification('Please enter a barcode.', 'error');
+            return;
+        }
+
+        // Disable form during submission
+        submitBtn.disabled = true;
+        submitBtn.innerHTML = `
+            <svg class="animate-spin mr-2 h-4 w-4" fill="none" viewBox="0 0 24 24">
+                <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+                <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+            </svg>
+            Processing...
+        `;
+
+        try {
+            const formData = new FormData();
+            formData.append('barcode', barcode);
+            formData.append('csrfmiddlewaretoken', document.querySelector('[name=csrfmiddlewaretoken]').value);
+
+            const response = await fetch(`/scale/delivery-notes/{{ delivery_note.id }}/recall-bale/`, {
+                method: 'POST',
+                body: formData
+            });
+
+            const data = await response.json();
+
+            if (data.success) {
+                showNotification(data.message, 'success');
+                barcodeInput.value = '';
+                
+                // Update counts
+                updateCounts(data.scanned_count, data.total_count);
+                
+                // Update bale status in table
+                updateBaleStatus(barcode, false);
+                
+                // Increment recalled count
+                recalledCount++;
+                recalledCountEl.textContent = recalledCount;
+                
+            } else {
+                showNotification(data.message, 'error');
+            }
+
+        } catch (error) {
+            console.error('Error:', error);
+            showNotification('An error occurred while processing the request.', 'error');
+        } finally {
+            // Re-enable form
+            submitBtn.disabled = false;
+            submitBtn.innerHTML = `
+                <svg class="mr-2 h-4 w-4" fill="none" viewBox="0 0 24 24" stroke-width="1.75" stroke="currentColor">
+                    <path stroke-linecap="round" stroke-linejoin="round" d="M14.74 9l-.346 9m-4.788 0L9.26 9m9.968-3.21c.342.052.682.107 1.022.166m-1.022-.165L18.16 19.673a2.25 2.25 0 01-2.244 2.077H8.084a2.25 2.25 0 01-2.244-2.077L4.772 5.79m14.456 0a48.108 48.108 0 00-3.478-.397m-12 .562c.34-.059.68-.114 1.022-.165m0 0a48.11 48.11 0 013.478-.397m7.5 0v-.916c0-1.18-.91-2.164-2.09-2.201a51.964 51.964 0 00-3.32 0c-1.18.037-2.09 1.022-2.09 2.201v.916m7.5 0a48.667 48.667 0 00-7.5 0" />
+                </svg>
+                Recall Bale
+            `;
+        }
+    });
+
+    // Focus on barcode input when page loads
+    barcodeInput.focus();
+});
+</script>
+{% endblock %}
